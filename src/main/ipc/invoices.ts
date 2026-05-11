@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
-import { Invoice } from "../db/entities/invoice.js";
 import { DataSource } from "typeorm";
+import { Invoice } from "../database/entities/invoice";
 
 export const registerInvoiceIpc = (db: DataSource) => {
 

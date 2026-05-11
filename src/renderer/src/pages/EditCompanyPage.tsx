@@ -1,6 +1,7 @@
 import { Box, Button, Grid, TextField, Typography } from "@mui/material";
 import { useState } from "react";
-import { useCompany, type Company } from "../context/company";
+import { useCompany } from "../context/company";
+import { Company } from "../models/company";
 
 interface Props {
     onSaved: () => void;

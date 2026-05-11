@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
-import { Company } from "../db/entities/company.js";
 import { DataSource } from "typeorm";
+import { Company } from "../database/entities/company";
 
 export const registerCompanyIpc = (db: DataSource) => {
 

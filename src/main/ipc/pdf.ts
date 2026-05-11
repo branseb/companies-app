@@ -1,9 +1,9 @@
 import { app, ipcMain, shell } from "electron";
 import { DataSource } from "typeorm";
-import { Invoice } from "../db/entities/invoice.js";
 import { buildPdfInvoice, generatePdfBase64 } from "../pdf/generate.js";
 import fs from "fs";
 import path from "path";
+import { Invoice } from "../database/entities/invoice.js";
 
 export const registerPdfIpc = (db: DataSource) => {
     ipcMain.handle("pdf:download", async (_event, invoiceId: string) => {

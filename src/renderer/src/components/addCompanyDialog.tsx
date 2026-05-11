@@ -1,6 +1,6 @@
 import { Box, Button, Dialog, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
-import { type Company } from "../context/company";
+import { Company } from "../models/company";
 
 type AddCompanyDialogProps = {
     open: boolean;

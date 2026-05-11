@@ -1,7 +1,7 @@
 export type Company = {
     id: string;
     name: string;
-    ico?: string;
+    ico: string;
     dic?: string;
     icDph?: string;
     address?: string;

@@ -1,9 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
-import { getAppDataSource } from './database/data-source';
-import { registerHandlers } from './ipc/handlers';
+import { createDataSource } from './database/data-source';
+import { registerInvoiceIpc } from './ipc/invoices';
+import { registerCompanyIpc } from './ipc/companies';
+import { registerPdfIpc } from './ipc/pdf';
+import { registerWindowIpc } from './ipc/window';
 
-function createWindow(): void {
+function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -19,14 +22,21 @@ function createWindow(): void {
   } else {
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+  return win;
 }
 
 app.whenReady().then(async () => {
-  const ds = getAppDataSource();
-  await ds.initialize();
-  registerHandlers();
-  createWindow();
+  const dbPath = path.join(app.getPath("userData"), "app.db");
+
+  const db = createDataSource(dbPath);
+  await db.initialize();
+  registerInvoiceIpc(db);
+  registerCompanyIpc(db);
+  registerPdfIpc(db);
+  const win = createWindow();
+  registerWindowIpc(win);
 });
+
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

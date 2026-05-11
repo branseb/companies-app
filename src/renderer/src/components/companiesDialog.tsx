@@ -1,8 +1,9 @@
 import { Close, Delete, Edit } from "@mui/icons-material";
 import { Box, Button, Dialog, DialogContent, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, type DialogProps } from "@mui/material";
 import { Fragment, useState } from "react";
-import { useCompany, type Company } from "../context/company";
+import { useCompany } from "../context/company";
 import { AddCompanyDialog } from "./addCompanyDialog";
+import { Company } from "../models/company";
 
 export const CompaniesDialog = (props: DialogProps) => {
     const { open, onClose } = props;

@@ -1,18 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-export type Company = {
-    id: string;
-    name: string;
-    ico: string;
-    dic?: string;
-    icDph?: string;
-    address?: string;
-    city?: string;
-    zip?: string;
-    country?: string;
-    email?: string;
-    phone?: string;
-};
+import { Company } from "../models/company";
 
 type CompanyContextType = {
     companies: Company[];

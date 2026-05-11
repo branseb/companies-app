@@ -1,3 +1,5 @@
+import { Company } from "./models/company";
+
 declare global {
 	interface Window {
 		api: {
