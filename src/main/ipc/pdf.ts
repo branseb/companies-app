@@ -6,7 +6,7 @@ import path from "path";
 import { Invoice } from "../database/entities/invoice.js";
 
 export const registerPdfIpc = (db: DataSource) => {
-    ipcMain.handle("pdf:download", async (_event, invoiceId: string) => {
+    ipcMain.handle("pdf:download", async (_event, invoiceId: number) => {
         const raw = await db.getRepository(Invoice).findOneOrFail({ where: { id: invoiceId } });
         const faktura = buildPdfInvoice(raw);
         const base64 = generatePdfBase64(faktura);

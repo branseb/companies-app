@@ -2,14 +2,14 @@ import {
     Column,
     Entity,
     ManyToOne,
-    PrimaryColumn
+    PrimaryGeneratedColumn
 } from "typeorm";
 import { Company } from "./company";
 
 @Entity()
 export class Invoice {
-    @PrimaryColumn({ type: 'text' })
-    id!: string;
+    @PrimaryGeneratedColumn()
+    id!: number;
 
     @Column({ type: 'text' })
     invoiceNumber!: string;

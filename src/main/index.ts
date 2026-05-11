@@ -17,6 +17,8 @@ function createWindow() {
     },
   });
 
+  win.webContents.toggleDevTools()
+
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {

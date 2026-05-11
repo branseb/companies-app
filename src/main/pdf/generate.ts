@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import { drawParty } from "./party.js";
 import { drawDates } from "./dates.js";
 import { robotoBase64 } from "./robotoFont.js";
@@ -63,6 +63,7 @@ export const buildPdfInvoice = (raw: {
 };
 
 export const generatePdfBase64 = (faktura: PdfInvoice): string => {
+    console.log({ jsPDF })
     const doc = new jsPDF();
     const setFontSize = (size: number) => doc.setFontSize(size);
 

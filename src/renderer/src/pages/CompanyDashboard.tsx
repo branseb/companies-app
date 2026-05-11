@@ -16,8 +16,8 @@ export const CompanyDashboard = () => {
     const [refresh, setRefresh] = useState(false);
 
     useEffect(() => {
-        if (companyId && companyId !== activeCompany?.id) {
-            const found = companies.find(c => c.id === companyId);
+        if (companyId && companyId !== activeCompany?.id?.toString()) {
+            const found = companies.find(c => c.id?.toString() === companyId);
             if (found) setActiveCompanyID(found.id);
             else navigate("/", { replace: true });
         }

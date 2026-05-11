@@ -10,7 +10,7 @@ type AddCompanyDialogProps = {
 };
 
 const defaultCompany: Company = {
-    id: "",
+    id: undefined,
     name: "",
     ico: "",
     dic: "",
@@ -52,7 +52,7 @@ export const AddCompanyDialog = (props: AddCompanyDialogProps) => {
                 <TextField
                     fullWidth
                     label="IČO"
-                    disabled={!!company?.id.length}
+                    disabled={!!company?.id}
                     value={form.ico}
                     onChange={(e) => handleChange("ico", e.target.value)}
                     sx={{ mb: 1 }}

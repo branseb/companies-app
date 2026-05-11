@@ -1,6 +1,6 @@
 import { IconButton, Stack } from "@mui/material";
 import { Close, Minimize, Terminal } from "@mui/icons-material";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigation } from "react-router-dom";
 import { useCompany } from "./context/company";
 import { SelectCompanyPage } from "./pages/SelectCompanyPage";
 import { CompanyDashboard } from "./pages/CompanyDashboard";

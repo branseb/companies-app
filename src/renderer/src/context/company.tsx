@@ -4,7 +4,7 @@ import { Company } from "../models/company";
 type CompanyContextType = {
     companies: Company[];
     activeCompany: Company | undefined;
-    setActiveCompanyID: (id: string) => void;
+    setActiveCompanyID: (id?: number) => void;
     clearActiveCompany: () => void;
     addCompany: (c: Company) => void;
     updateCompany: (c: Company) => Promise<void>;
@@ -14,7 +14,7 @@ const CompanyContext = createContext<CompanyContextType | null>(null);
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [activeCompanyId, setActiveCompanyID] = useState<string | undefined>();
+    const [activeCompanyId, setActiveCompanyID] = useState<number | undefined>();
     const activeCompany = useMemo(() => companies.find(x => x.id === activeCompanyId), [companies, activeCompanyId])
 
     // 📥 LOAD zo súboru pri štarte
@@ -31,6 +31,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
         load();
     }, []);
+
+    console.log({ companies })
 
     const addCompany = async (c: Company) => {
         const saved = await window.api.company.add(c);
