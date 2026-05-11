@@ -15,9 +15,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    frame: false
   });
-
-  win.webContents.toggleDevTools()
 
   if (process.env.ELECTRON_RENDERER_URL) {
     win.loadURL(process.env.ELECTRON_RENDERER_URL);
