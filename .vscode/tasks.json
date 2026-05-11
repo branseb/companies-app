@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "npm run build",
+            "options": {
+                "cwd": "${workspaceFolder}/electron-react-template"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "dev",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/electron-react-template"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "pack",
+            "type": "shell",
+            "command": "npm run pack",
+            "options": {
+                "cwd": "${workspaceFolder}/electron-react-template"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
