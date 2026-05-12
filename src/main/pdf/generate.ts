@@ -63,7 +63,6 @@ export const buildPdfInvoice = (raw: {
 };
 
 export const generatePdfBase64 = (faktura: PdfInvoice): string => {
-    console.log({ jsPDF })
     const doc = new jsPDF();
     const setFontSize = (size: number) => doc.setFontSize(size);
 

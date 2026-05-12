@@ -32,8 +32,6 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         load();
     }, []);
 
-    console.log({ companies })
-
     const addCompany = async (c: Company) => {
         const saved = await window.api.company.add(c);
         setCompanies((prev) => [...prev, saved]);
@@ -61,7 +59,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
-export function useCompany() {
+export const useCompany = () => {
     const ctx = useContext(CompanyContext);
     if (!ctx) throw new Error("useCompany must be used inside Provider");
     return ctx;

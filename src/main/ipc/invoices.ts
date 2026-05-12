@@ -6,7 +6,6 @@ export const registerInvoiceIpc = (db: DataSource) => {
 
     ipcMain.handle("invoice:create", async (_event, faktura) => {
         const repo = db.getRepository(Invoice);
-        console.log('handler' + { faktura })
         const invoice = repo.create({
             invoiceNumber: faktura.id, // alebo generátor
             issueDate: faktura.issueDate,

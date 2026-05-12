@@ -103,7 +103,6 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
         e.preventDefault();
         if (!invoice || !activeCompany) return;
         const enInvoice = mapToEN16931(invoice)
-        console.log(enInvoice)
         try {
             await window.api.invoice.create(enInvoice);
             onAdd();

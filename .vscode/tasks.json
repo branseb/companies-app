@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "npm run build",
             "options": {
-                "cwd": "${workspaceFolder}/electron-react-template"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
         },
@@ -15,7 +15,7 @@
             "type": "shell",
             "command": "npm run dev",
             "options": {
-                "cwd": "${workspaceFolder}/electron-react-template"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
         },
@@ -24,7 +24,7 @@
             "type": "shell",
             "command": "npm run pack",
             "options": {
-                "cwd": "${workspaceFolder}/electron-react-template"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
         }
