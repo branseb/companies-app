@@ -3,14 +3,7 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
     Collapse,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    Grid,
     IconButton,
     LinearProgress,
     MenuItem,
@@ -34,20 +27,10 @@ import { useCompany } from "../context/company";
 import { parseInvoiceXML } from "../utils/parseInvoiceXML";
 import type { EN16931Invoice } from "../models/EN16931Invoice";
 import { ReceivedInvoiceForm } from "./ReceivedInvoiceForm";
-
-interface InvoiceRow {
-    id: string;
-    invoiceNumber: string;
-    issueDate: string;
-    dueDate: string;
-    deliveryDate?: string;
-    currency: string;
-    supplier: string;
-    customer: string;
-    items: string;
-    paid?: boolean;
-    paidDate?: string;
-}
+import type { InvoiceRow } from "./invoice/invoiceTypes";
+import { tryParse, formatDate, isOverdue, fmtMoney, computeTotal, downloadCSV } from "./invoice/invoiceUtils";
+import { InvoiceDetail } from "./invoice/InvoiceDetail";
+import { XmlPreviewDialog } from "./invoice/XmlPreviewDialog";
 
 interface Props {
     type: "issued" | "received";
@@ -60,230 +43,8 @@ const LABELS = {
     received: "Prijaté faktúry",
 };
 
-const DetailField: React.FC<{ label: string; value?: string }> = ({ label, value }) =>
-    value ? (
-        <>
-            <Grid size={{ xs: 4 }}>
-                <Typography variant="caption" color="text.secondary">{label}</Typography>
-            </Grid>
-            <Grid size={{ xs: 8 }}>
-                <Typography variant="caption">{value}</Typography>
-            </Grid>
-        </>
-    ) : null;
-
-const InvoiceDetail: React.FC<{ inv: InvoiceRow; type: "issued" | "received" }> = ({ inv, type }) => {
-    const supplier = tryParse(inv.supplier);
-    const customer = tryParse(inv.customer);
-    const items: any[] = tryParse(inv.items) ?? [];
-
-    const party = type === "issued" ? customer : supplier;
-    const partyLabel = type === "issued" ? "Zákazník" : "Dodávateľ";
-
-    return (
-        <Box sx={{ px: 3, py: 2, bgcolor: "grey.50" }}>
-            <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="overline" fontWeight={700} color="text.secondary" display="block" sx={{ mb: 1 }}>
-                        {partyLabel}
-                    </Typography>
-                    <Grid container rowSpacing={0.5}>
-                        <DetailField label="Názov" value={party?.partyName} />
-                        <DetailField label="IČO" value={party?.partyLegalEntity?.companyID} />
-                        <DetailField label="IČ DPH" value={party?.partyTaxScheme?.companyID} />
-                        <DetailField label="Mesto" value={party?.postalAddress?.cityName} />
-                    </Grid>
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 4 }}>
-                    <Typography variant="overline" fontWeight={700} color="text.secondary" display="block" sx={{ mb: 1 }}>
-                        Faktúra
-                    </Typography>
-                    <Grid container rowSpacing={0.5}>
-                        <DetailField label="Vystavená" value={formatDate(inv.issueDate)} />
-                        <DetailField label="Splatnosť" value={formatDate(inv.dueDate)} />
-                        <DetailField label="Mena" value={inv.currency} />
-                    </Grid>
-                </Grid>
-
-                {items.length > 0 && (
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                        <Typography variant="overline" fontWeight={700} color="text.secondary" display="block" sx={{ mb: 1 }}>
-                            Položky
-                        </Typography>
-                        {items.map((item, i) => (
-                            <Box key={i} sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                                <Typography variant="caption">{item.item?.name ?? item.description}</Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ ml: 2, whiteSpace: "nowrap" }}>
-                                    {item.invoicedQuantity} × {item.price?.priceAmount?.toFixed(2)}
-                                </Typography>
-                            </Box>
-                        ))}
-                    </Grid>
-                )}
-            </Grid>
-        </Box>
-    );
-};
-
-function tryParse(json: string) {
-    try { return JSON.parse(json); } catch { return null; }
-}
-
-function formatDate(date?: string) {
-    if (!date) return "—";
-    return new Date(date).toLocaleDateString("sk-SK");
-}
-
-function isOverdue(inv: InvoiceRow): boolean {
-    if (inv.paid) return false;
-    if (!inv.dueDate) return false;
-    return new Date(inv.dueDate) < new Date(new Date().toDateString());
-}
-
-function fmtMoney(n: number, currency: string) {
-    return new Intl.NumberFormat("sk-SK", { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
-}
-
-// ── XML import preview ────────────────────────────────────────────────────────
-
-const XmlPreviewDialog: React.FC<{
-    invoice: EN16931Invoice | null;
-    format: string;
-    open: boolean;
-    onClose: () => void;
-    onConfirm: (inv: EN16931Invoice) => void;
-}> = ({ invoice, format, open, onClose, onConfirm }) => {
-    if (!invoice) return null;
-
-    const supplier = invoice.accountingSupplierParty;
-    const customer = invoice.accountingCustomerParty;
-    const total = invoice.legalMonetaryTotal;
-    const currency = invoice.documentCurrencyCode;
-
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
-                Import faktúry — {format}
-            </DialogTitle>
-            <DialogContent dividers>
-                <Stack gap={2}>
-                    <Alert severity="info">
-                        Faktúra č. <strong>{invoice.id}</strong> bude uložená do databázy.
-                    </Alert>
-
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="overline" color="text.secondary" display="block">Dodávateľ</Typography>
-                            <Typography fontWeight={600}>{supplier.partyName}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                IČO: {supplier.partyLegalEntity?.companyID}
-                                {supplier.partyTaxScheme?.companyID && ` | IČ DPH: ${supplier.partyTaxScheme.companyID}`}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                {[supplier.postalAddress.streetName, supplier.postalAddress.cityName].filter(Boolean).join(", ")}
-                            </Typography>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Typography variant="overline" color="text.secondary" display="block">Odberateľ</Typography>
-                            <Typography fontWeight={600}>{customer.partyName}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                IČO: {customer.partyLegalEntity?.companyID}
-                                {customer.partyTaxScheme?.companyID && ` | IČ DPH: ${customer.partyTaxScheme.companyID}`}
-                            </Typography>
-                        </Grid>
-                    </Grid>
-
-                    <Divider />
-
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 6, sm: 3 }}>
-                            <Typography variant="caption" color="text.secondary" display="block">Číslo</Typography>
-                            <Typography>{invoice.id}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 3 }}>
-                            <Typography variant="caption" color="text.secondary" display="block">Vystavená</Typography>
-                            <Typography>{formatDate(invoice.issueDate)}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 3 }}>
-                            <Typography variant="caption" color="text.secondary" display="block">Splatnosť</Typography>
-                            <Typography>{formatDate(invoice.dueDate)}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6, sm: 3 }}>
-                            <Typography variant="caption" color="text.secondary" display="block">Mena</Typography>
-                            <Typography>{currency}</Typography>
-                        </Grid>
-                    </Grid>
-
-                    <Divider />
-
-                    <Typography variant="overline" color="text.secondary">Položky</Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow sx={{ bgcolor: "grey.50" }}>
-                                    <TableCell>Názov</TableCell>
-                                    <TableCell align="right">Množstvo</TableCell>
-                                    <TableCell align="right">Cena / ks</TableCell>
-                                    <TableCell align="right">Spolu bez DPH</TableCell>
-                                    <TableCell align="right">DPH %</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {invoice.invoiceLine.map((line, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell>{line.item.name}</TableCell>
-                                        <TableCell align="right">{line.invoicedQuantity}</TableCell>
-                                        <TableCell align="right">{fmtMoney(line.price.priceAmount, currency)}</TableCell>
-                                        <TableCell align="right">{fmtMoney(line.lineExtensionAmount, currency)}</TableCell>
-                                        <TableCell align="right">{line.item.classifiedTaxCategory.percent} %</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-
-                    <Stack direction="row" gap={2} justifyContent="flex-end" flexWrap="wrap">
-                        <Chip label={`Bez DPH: ${fmtMoney(total.taxExclusiveAmount, currency)}`} variant="outlined" />
-                        <Chip
-                            label={`Na úhradu: ${fmtMoney(total.payableAmount, currency)}`}
-                            color="primary"
-                            sx={{ fontWeight: 700 }}
-                        />
-                    </Stack>
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Zrušiť</Button>
-                <Button variant="contained" onClick={() => onConfirm(invoice)}>
-                    Uložiť faktúru
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
-// ── Main component ────────────────────────────────────────────────────────────
-
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2];
-
-function computeTotal(itemsJson: string): number {
-    const items = tryParse(itemsJson) ?? [];
-    return items.reduce((s: number, it: any) => {
-        const net = it.lineExtensionAmount ?? 0;
-        const vat = it.item?.classifiedTaxCategory?.percent ?? 0;
-        return s + net * (1 + vat / 100);
-    }, 0);
-}
-
-function downloadCSV(content: string, filename: string) {
-    const blob = new Blob(["﻿" + content], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-}
 
 export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
     const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
@@ -304,6 +65,15 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
     useEffect(() => { loadInvoices(); }, [type, refresh, activeCompany]);
 
+    const loadInvoices = () => {
+        if (!activeCompany) return;
+        setLoading(true);
+        const fetch = type === "issued"
+            ? window.api.invoice.byCompany(activeCompany.ico)
+            : window.api.invoice.byCustomer(activeCompany.ico);
+        fetch.then(setInvoices).finally(() => setLoading(false));
+    };
+
     const handleDownload = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         try {
@@ -312,15 +82,6 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
         } catch (err) {
             console.error("PDF download failed:", err);
         }
-    };
-
-    const loadInvoices = () => {
-        if (!activeCompany) return;
-        setLoading(true);
-        const fetch = type === "issued"
-            ? window.api.invoice.byCompany(activeCompany.ico)
-            : window.api.invoice.byCustomer(activeCompany.ico);
-        fetch.then(setInvoices).finally(() => setLoading(false));
     };
 
     const handleExportCSV = () => {
@@ -402,7 +163,6 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
     return (
         <Paper style={{ padding: 20 }}>
-            {/* Row 1: title + actions */}
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5} flexWrap="wrap" gap={1}>
                 <Typography variant="h5">{LABELS[type]}</Typography>
                 <Stack direction="row" gap={1} alignItems="center">
@@ -423,7 +183,6 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                 </Stack>
             </Stack>
 
-            {/* Row 2: filters */}
             <Stack direction="row" alignItems="center" gap={1.5} mb={2} flexWrap="wrap">
                 <Select size="small" value={yearFilter}
                     onChange={e => setYearFilter(e.target.value as number | "all")}
