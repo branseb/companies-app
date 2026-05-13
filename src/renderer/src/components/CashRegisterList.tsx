@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt, SaveOutlined } from "@mui/icons-material";
 import { useCompany } from "../context/company";
+import { useNavigate } from "react-router-dom";
 import type { CashEntry, CashRegister } from "../models/cashEntry";
 import { fmt } from "../models/cashEntry";
 import type { InvoiceOption, Tx } from "../models/bankTransaction";
@@ -166,6 +167,7 @@ const ManageDialog: React.FC<ManageDialogProps> = ({ open, registers, companyId,
 
 export const CashRegisterList: React.FC = () => {
     const { activeCompany } = useCompany();
+    const navigate = useNavigate();
     const [entries, setEntries] = useState<CashEntry[]>([]);
     const [registers, setRegisters] = useState<CashRegister[]>([]);
     const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
@@ -434,8 +436,9 @@ export const CashRegisterList: React.FC = () => {
                                                         size="small"
                                                         color={linkedInv.type === "issued" ? "primary" : "warning"}
                                                         variant="outlined"
-                                                        onClick={() => setLinkTarget(entry)}
+                                                        onClick={() => navigate(`/${activeCompany!.id}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
                                                         title={`${linkedInv.partyName}`}
+                                                        sx={{ cursor: "pointer" }}
                                                     />
                                                     <Tooltip title="Odpojiť faktúru">
                                                         <IconButton size="small" onClick={() => handleUnlink(entry.id)}>

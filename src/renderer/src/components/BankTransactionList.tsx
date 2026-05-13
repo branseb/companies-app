@@ -8,6 +8,7 @@ import {
 import { Add, AutoAwesome, DeleteOutline, EditNote, FileUpload, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
 import type { BankAccount } from "../models/bankTransaction";
 import { useCompany } from "../context/company";
+import { useNavigate } from "react-router-dom";
 import { BankTransactionForm } from "./BankTransactionForm";
 import { CsvImportDialog, XmlImportDialog } from "./bankTransaction/ImportDialogs";
 import { AutoMatchDialog, LinkInvoiceDialog } from "./bankTransaction/InvoiceDialogs";
@@ -24,6 +25,7 @@ import type { ImportRow, InvoiceOption, MatchSuggestion, Tx } from "../models/ba
 
 export const BankTransactionList: React.FC = () => {
     const { activeCompany } = useCompany();
+    const navigate = useNavigate();
     const [transactions, setTransactions] = useState<Tx[]>([]);
     const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
@@ -265,8 +267,9 @@ export const BankTransactionList: React.FC = () => {
                                                         size="small"
                                                         color={linkedInv.type === "issued" ? "primary" : "warning"}
                                                         variant="outlined"
-                                                        onClick={() => setLinkTarget(tx)}
+                                                        onClick={() => navigate(`/${activeCompany!.id}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
                                                         title={`${linkedInv.partyName} | ${fmt(linkedInv.grossTotal, linkedInv.currency)}`}
+                                                        sx={{ cursor: "pointer" }}
                                                     />
                                                     <Tooltip title="Odpojiť faktúru">
                                                         <IconButton size="small" onClick={() => handleUnlink(tx.id)}>

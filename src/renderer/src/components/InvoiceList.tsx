@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
     Alert,
     Box,
@@ -54,6 +55,9 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<InvoiceRow | null>(null);
+    const [highlightId, setHighlightId] = useState<string | null>(null);
+    const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
+    const location = useLocation();
     const { activeCompany } = useCompany();
 
     const fileRef = useRef<HTMLInputElement>(null);
@@ -66,13 +70,34 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
     useEffect(() => { loadInvoices(); }, [type, refresh, activeCompany]);
 
+    useEffect(() => {
+        const id = (location.state as { highlightId?: number } | null)?.highlightId;
+        if (!id) return;
+        const strId = String(id);
+        setExpandedId(strId);
+        setHighlightId(strId);
+        setYearFilter("all");
+        setStatusFilter("all");
+        const fade = setTimeout(() => setHighlightId(null), 3500);
+        return () => clearTimeout(fade);
+    }, [location.key]);
+
+    useEffect(() => {
+        if (!highlightId) return;
+        // wait one tick for DOM to update with the ref
+        const t = setTimeout(() => {
+            highlightRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 80);
+        return () => clearTimeout(t);
+    }, [highlightId, invoices]);
+
     const loadInvoices = () => {
         if (!activeCompany) return;
         setLoading(true);
         const fetch = type === "issued"
             ? window.api.invoice.byCompany(activeCompany.ico)
             : window.api.invoice.byCustomer(activeCompany.ico);
-        fetch.then(setInvoices).finally(() => setLoading(false));
+        fetch.then((data: any[]) => setInvoices(data.map(i => ({ ...i, id: String(i.id) })))).finally(() => setLoading(false));
     };
 
     const handleDownload = async (id: string, e: React.MouseEvent) => {
@@ -244,14 +269,18 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                             filteredInvoices.map(inv => {
                                 const expanded = expandedId === inv.id;
                                 const overdue = isOverdue(inv);
+                                const isHighlighted = highlightId === inv.id;
                                 return (
                                     <React.Fragment key={inv.id}>
                                         <TableRow
+                                            ref={isHighlighted ? highlightRowRef : null}
                                             hover
                                             onClick={() => toggle(inv.id)}
                                             sx={{
                                                 cursor: "pointer",
-                                                bgcolor: overdue ? "error.50" : undefined,
+                                                bgcolor: isHighlighted ? "#fff8e1" : overdue ? "error.50" : undefined,
+                                                boxShadow: isHighlighted ? "inset 0 0 0 2px #f9a825" : undefined,
+                                                transition: "background-color 2s ease, box-shadow 2s ease",
                                                 "& > *": { borderBottom: expanded ? "unset" : undefined },
                                             }}
                                         >
