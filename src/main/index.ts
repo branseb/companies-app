@@ -5,11 +5,13 @@ import { registerInvoiceIpc } from './ipc/invoices';
 import { registerCompanyIpc } from './ipc/companies';
 import { registerPdfIpc } from './ipc/pdf';
 import { registerWindowIpc } from './ipc/window';
+import { registerBankTransactionIpc } from './ipc/bankTransactions';
+import { registerBankAccountIpc } from './ipc/bankAccounts';
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
-    height: 800,
+    height: 900,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -32,8 +34,10 @@ app.whenReady().then(async () => {
   const db = createDataSource(dbPath);
   await db.initialize();
   registerInvoiceIpc(db);
-  registerCompanyIpc(db);
+  await registerCompanyIpc(db);
   registerPdfIpc(db);
+  registerBankTransactionIpc(db);
+  registerBankAccountIpc(db);
   const win = createWindow();
   registerWindowIpc(win);
 });

@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "re
 import { useCompany } from "../context/company";
 import { InvoiceForm } from "../components/InvoiceForm";
 import { InvoiceList } from "../components/InvoiceList";
+import { BankTransactionList } from "../components/BankTransactionList";
 import { CompanyHome } from "./CompanyHome";
 import { EditCompanyPage } from "./EditCompanyPage";
 
@@ -55,10 +56,12 @@ export const CompanyDashboard = () => {
             <Container sx={{ flex: 1, overflow: "auto", py: 4 }}>
                 <Routes>
                     <Route index element={<CompanyHome />} />
-                    <Route path="invoices" element={<InvoiceList refresh={refresh} />} />
+                    <Route path="invoices/issued"   element={<InvoiceList refresh={refresh} type="issued"   />} />
+                    <Route path="invoices/received" element={<InvoiceList refresh={refresh} type="received" />} />
                     <Route path="new-invoice" element={
-                        <InvoiceForm onAdd={() => { setRefresh(r => !r); navigate(`${base}/invoices`); }} />
+                        <InvoiceForm onAdd={() => { setRefresh(r => !r); navigate(`${base}/invoices/issued`); }} />
                     } />
+                    <Route path="bank" element={<BankTransactionList />} />
                     <Route path="edit" element={<EditCompanyPage onSaved={() => navigate(base)} />} />
                     <Route path="*" element={<Navigate to={base} replace />} />
                 </Routes>

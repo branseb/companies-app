@@ -9,11 +9,31 @@ declare global {
 				get: (id: string) => Promise<any>;
 				nextId: (supplierIco: string) => Promise<string>;
 				byCompany: (ico: string) => Promise<any[]>;
+				byCustomer: (ico: string) => Promise<any[]>;
+				knownParties: () => Promise<any[]>;
+				markPaid: (id: number, paid: boolean) => Promise<void>;
+				delete: (id: number) => Promise<void>;
 			};
 
 			company: {
 				get: () => Promise<Company[]>;
 				add: (data: Company) => Promise<Company>;
+				update: (data: Company) => Promise<Company>;
+			};
+
+			bankAccount: {
+				byCompany: (companyId: number) => Promise<any[]>;
+				create: (data: any) => Promise<any>;
+				update: (data: { id: number; name: string; note?: string }) => Promise<void>;
+				delete: (id: number) => Promise<void>;
+			};
+			bankTransaction: {
+				create: (data: any) => Promise<any>;
+				bulkImport: (rows: any[], companyId: number, bankAccountId?: number) => Promise<{ saved: number; skipped: number }>;
+				byCompany: (companyId: number) => Promise<any[]>;
+				updateNote: (id: number, note: string) => Promise<void>;
+				linkInvoice: (id: number, invoiceId: number | null) => Promise<void>;
+				delete: (id: number) => Promise<void>;
 			};
 		};
 		electron: {
