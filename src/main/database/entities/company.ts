@@ -19,4 +19,19 @@ export class Company {
 
     @Column({ nullable: true, type: 'text' })
     city?: string;
+
+    @Column({ nullable: true, type: 'text' })
+    icDph?: string;
+
+    @Column({ nullable: true, type: 'text' })
+    zip?: string;
+
+    @Column({ nullable: true, type: 'text' })
+    country?: string;
+
+    @Column({ nullable: true, type: 'text' })
+    email?: string;
+
+    @Column({ nullable: true, type: 'text' })
+    phone?: string;
 }

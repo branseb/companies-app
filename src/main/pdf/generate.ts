@@ -38,7 +38,7 @@ export interface PdfInvoice {
 export const buildPdfInvoice = (raw: {
     invoiceNumber: string;
     issueDate: string;
-    dueDate: string;
+    dueDate?: string;
     currency: string;
     items: string;
     supplier: string;

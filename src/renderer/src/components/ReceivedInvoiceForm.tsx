@@ -4,13 +4,11 @@ import { mapToEN16931 } from "../utils/mapToEN16931";
 import type { SimpleInvoice } from "../models/SimpleInvoice";
 import { CurrencySelect } from "./currencySelect";
 import { useCompany } from "../context/company";
-import { CompanyInfo } from "./companyInfo";
 import { PartyAutocomplete } from "./PartyAutocomplete";
 import { FormSection } from "./FormSection";
 import { InvoiceItemsEditor } from "./InvoiceItemsEditor";
 
-export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
-
+export const ReceivedInvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
     const { activeCompany } = useCompany();
     const [invoice, setInvoice] = useState<SimpleInvoice | null>(null);
     const [vatEnabled, setVatEnabled] = useState(true);
@@ -27,14 +25,15 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
 
         setInvoice({
             invoiceNumber: "",
-
             issueDate: format(today),
             dueDate: format(due),
             currency: "EUR",
-            delivery: {
-                actualDeliveryDate: format(today)
-            },
+            delivery: { actualDeliveryDate: format(today) },
             supplier: {
+                name: "",
+                ico: "",
+            },
+            customer: {
                 name: activeCompany.name,
                 ico: activeCompany.ico,
                 dic: activeCompany.dic,
@@ -46,38 +45,11 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                 email: activeCompany.email,
                 phone: activeCompany.phone,
             },
-
-            customer: {
-                name: "Odberatel a.s.",
-                ico: "888 644 150",
-            },
-
             items: [
                 { description: "Konzultácia", quantity: 1, unitPrice: 100, taxRate: 20 },
                 { description: "Vývoj", quantity: 8, unitPrice: 50, taxRate: 20 },
             ],
         });
-    }, [activeCompany]);
-
-    const fetchNextId = async (ico: string) => {
-        try {
-            const res = await window.api.invoice.nextId(ico);
-            setInvoice(prev => {
-                if (!prev) return prev;
-
-                return {
-                    ...prev,
-                    invoiceNumber: res
-                };
-            });
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    useEffect(() => {
-        if (!activeCompany?.ico) return;
-        fetchNextId(activeCompany.ico);
     }, [activeCompany]);
 
     const handleChange = <K extends keyof SimpleInvoice>(field: K, value: SimpleInvoice[K]) =>
@@ -86,26 +58,9 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
             return { ...prev, [field]: value };
         });
 
-    const handleCustomerChange = (
-        field: keyof SimpleInvoice["customer"],
-        value: string
-    ) => {
-        setInvoice(prev => {
-            if (!prev) return prev;
-
-            return {
-                ...prev,
-                customer: {
-                    ...prev.customer,
-                    [field]: value,
-                },
-            };
-        });
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!invoice || !activeCompany) return;
+        if (!invoice) return;
 
         if (!invoice.invoiceNumber.trim()) {
             setSnackbar({ open: true, message: "Číslo faktúry je povinné", severity: "error" });
@@ -127,7 +82,6 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
             await window.api.invoice.create(enInvoice);
             onAdd();
             setSnackbar({ open: true, message: "Faktúra uložená", severity: "success" });
-            await fetchNextId(activeCompany.ico);
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Chyba pri ukladaní faktúry";
             setSnackbar({ open: true, message: msg, severity: "error" });
@@ -136,56 +90,54 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
         }
     };
 
-    if (!invoice) return <Typography>vyber firmu</Typography>
+    if (!invoice) return <Typography>vyber firmu</Typography>;
 
     return (
         <Paper style={{ padding: 20, marginBottom: 20 }}>
             <Typography variant="h5" gutterBottom>
-                Vytvoriť faktúru
+                Pridať prijatú faktúru
             </Typography>
-            <CompanyInfo />
             <form onSubmit={handleSubmit}>
-
                 <Grid container spacing={3}>
 
-                    <FormSection title="Zákazník">
+                    <FormSection title="Dodávateľ">
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <PartyAutocomplete
                                 label="IČO"
-                                value={invoice.customer}
-                                onChange={customer => handleChange("customer", customer)}
+                                value={invoice.supplier}
+                                onChange={supplier => handleChange("supplier", supplier)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Názov"
                                 fullWidth
-                                value={invoice.customer.name}
-                                onChange={e => handleCustomerChange("name", e.target.value)}
+                                value={invoice.supplier.name}
+                                onChange={e => handleChange("supplier", { ...invoice.supplier, name: e.target.value })}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Ulica"
                                 fullWidth
-                                value={invoice.customer.address ?? ""}
-                                onChange={e => handleCustomerChange("address", e.target.value)}
+                                value={invoice.supplier.address ?? ""}
+                                onChange={e => handleChange("supplier", { ...invoice.supplier, address: e.target.value })}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 3 }}>
                             <TextField
                                 label="PSČ"
                                 fullWidth
-                                value={invoice.customer.zip ?? ""}
-                                onChange={e => handleCustomerChange("zip", e.target.value)}
+                                value={invoice.supplier.zip ?? ""}
+                                onChange={e => handleChange("supplier", { ...invoice.supplier, zip: e.target.value })}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 3 }}>
                             <TextField
                                 label="Mesto"
                                 fullWidth
-                                value={invoice.customer.city ?? ""}
-                                onChange={e => handleCustomerChange("city", e.target.value)}
+                                value={invoice.supplier.city ?? ""}
+                                onChange={e => handleChange("supplier", { ...invoice.supplier, city: e.target.value })}
                             />
                         </Grid>
                     </FormSection>
@@ -197,12 +149,14 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                                 label="Číslo faktúry"
                                 fullWidth
                                 value={invoice.invoiceNumber}
-                                onChange={(e) => handleChange("invoiceNumber", e.target.value)}
+                                onChange={e => handleChange("invoiceNumber", e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <CurrencySelect
-                                onChange={(currency) => handleChange('currency', currency)} invoice={invoice} />
+                                onChange={currency => handleChange("currency", currency)}
+                                invoice={invoice}
+                            />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 4 }}>
                             <TextField
@@ -211,7 +165,7 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                                 fullWidth
                                 slotProps={{ inputLabel: { shrink: true } }}
                                 value={invoice.issueDate}
-                                onChange={(e) => handleChange('issueDate', e.target.value)}
+                                onChange={e => handleChange("issueDate", e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 4 }}>
@@ -220,8 +174,8 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                                 type="date"
                                 fullWidth
                                 slotProps={{ inputLabel: { shrink: true } }}
-                                value={invoice.dueDate || ""}
-                                onChange={(e) => handleChange('dueDate', e.target.value)}
+                                value={invoice.dueDate ?? ""}
+                                onChange={e => handleChange("dueDate", e.target.value)}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 4 }}>
@@ -230,8 +184,8 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                                 type="date"
                                 fullWidth
                                 slotProps={{ inputLabel: { shrink: true } }}
-                                value={invoice.delivery?.actualDeliveryDate || ""}
-                                onChange={(e) => handleChange('delivery', { actualDeliveryDate: e.target.value })}
+                                value={invoice.delivery?.actualDeliveryDate ?? ""}
+                                onChange={e => handleChange("delivery", { actualDeliveryDate: e.target.value })}
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
@@ -265,12 +219,13 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
                     <Grid size={{ xs: 12 }}>
                         <Button type="submit" variant="contained" disabled={loading}
                             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}>
-                            Vytvoriť faktúru
+                            Uložiť faktúru
                         </Button>
                     </Grid>
 
                 </Grid>
             </form>
+
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={4000}
