@@ -22,7 +22,7 @@ import {
     Tooltip,
     Typography,
 } from "@mui/material";
-import { Add, CheckCircle, DeleteOutline, Download, FileDownload, FileUpload, KeyboardArrowDown, KeyboardArrowUp, RadioButtonUnchecked } from "@mui/icons-material";
+import { Add, CheckCircle, DeleteOutline, Download, Edit, FileDownload, FileUpload, KeyboardArrowDown, KeyboardArrowUp, RadioButtonUnchecked } from "@mui/icons-material";
 import { useCompany } from "../context/company";
 import { parseInvoiceXML } from "../utils/parseInvoiceXML";
 import type { EN16931Invoice } from "../models/EN16931Invoice";
@@ -53,6 +53,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
     const [yearFilter, setYearFilter] = useState<number | "all">(currentYear);
     const [loading, setLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState<InvoiceRow | null>(null);
     const { activeCompany } = useCompany();
 
     const fileRef = useRef<HTMLInputElement>(null);
@@ -168,8 +169,8 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                 <Stack direction="row" gap={1} alignItems="center">
                     {type === "received" && (
                         <Button variant="contained" size="small" startIcon={<Add />}
-                            onClick={() => setShowForm(s => !s)}>
-                            {showForm ? "Zrušiť" : "Pridať faktúru"}
+                            onClick={() => { setEditingInvoice(null); setShowForm(s => !s); }}>
+                            {showForm && !editingInvoice ? "Zrušiť" : "Pridať faktúru"}
                         </Button>
                     )}
                     <Button variant="outlined" size="small" startIcon={<FileDownload />}
@@ -208,7 +209,10 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
             {loading && <LinearProgress sx={{ mb: 1 }} />}
 
             {showForm && type === "received" && (
-                <ReceivedInvoiceForm onAdd={() => { setShowForm(false); loadInvoices(); onAdd?.(); }} />
+                <ReceivedInvoiceForm
+                    editInvoice={editingInvoice ?? undefined}
+                    onAdd={() => { setShowForm(false); setEditingInvoice(null); loadInvoices(); onAdd?.(); }}
+                />
             )}
 
             <TableContainer>
@@ -287,6 +291,18 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                                                     <Tooltip title="Stiahnuť PDF">
                                                         <IconButton size="small" onClick={e => handleDownload(inv.id, e)}>
                                                             <Download fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {type === "received" && (
+                                                    <Tooltip title="Upraviť faktúru">
+                                                        <IconButton size="small" onClick={e => {
+                                                            e.stopPropagation();
+                                                            setEditingInvoice(inv);
+                                                            setShowForm(true);
+                                                            setExpandedId(null);
+                                                        }}>
+                                                            <Edit fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}

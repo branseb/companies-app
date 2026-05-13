@@ -7,6 +7,7 @@ import { registerPdfIpc } from './ipc/pdf';
 import { registerWindowIpc } from './ipc/window';
 import { registerBankTransactionIpc } from './ipc/bankTransactions';
 import { registerBankAccountIpc } from './ipc/bankAccounts';
+import { registerCashIpc } from './ipc/cash';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -38,6 +39,7 @@ app.whenReady().then(async () => {
   registerPdfIpc(db);
   registerBankTransactionIpc(db);
   registerBankAccountIpc(db);
+  registerCashIpc(db);
   const win = createWindow();
   registerWindowIpc(win);
 });

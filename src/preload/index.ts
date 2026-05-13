@@ -4,6 +4,7 @@ import { Invoice } from '../main/database/entities/invoice';
 contextBridge.exposeInMainWorld("api", {
   invoice: {
     create: (data: Invoice) => ipcRenderer.invoke("invoice:create", data),
+    update: (id: number, data: Invoice) => ipcRenderer.invoke("invoice:update", id, data),
     byCompany: (supplierIco: string) => ipcRenderer.invoke("invoice:by-company", supplierIco),
     byCustomer: (customerIco: string) => ipcRenderer.invoke("invoice:by-customer", customerIco),
     knownParties: () => ipcRenderer.invoke("invoice:known-parties"),
@@ -26,6 +27,20 @@ contextBridge.exposeInMainWorld("api", {
     create: (data: any) => ipcRenderer.invoke("bankAccount:create", data),
     update: (data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("bankAccount:update", data),
     delete: (id: number) => ipcRenderer.invoke("bankAccount:delete", id),
+  },
+  cashRegister: {
+    byCompany: (companyId: number) => ipcRenderer.invoke("cashRegister:by-company", companyId),
+    create: (data: any) => ipcRenderer.invoke("cashRegister:create", data),
+    update: (data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("cashRegister:update", data),
+    delete: (id: number) => ipcRenderer.invoke("cashRegister:delete", id),
+  },
+  cashEntry: {
+    byCompany: (companyId: number) => ipcRenderer.invoke("cashEntry:by-company", companyId),
+    create: (data: any) => ipcRenderer.invoke("cashEntry:create", data),
+    update: (data: any) => ipcRenderer.invoke("cashEntry:update", data),
+    linkInvoice: (id: number, invoiceId: number | null) => ipcRenderer.invoke("cashEntry:link-invoice", id, invoiceId),
+    pairBankTransaction: (id: number, bankTransactionId: number | null) => ipcRenderer.invoke("cashEntry:pair-bank-transaction", id, bankTransactionId),
+    delete: (id: number) => ipcRenderer.invoke("cashEntry:delete", id),
   },
   bankTransaction: {
     create: (data: any) => ipcRenderer.invoke("bankTransaction:create", data),

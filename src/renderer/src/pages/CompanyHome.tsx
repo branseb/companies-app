@@ -1,7 +1,7 @@
 import { Avatar, Box, Grid, Paper, Stack, Typography } from "@mui/material";
 import {
     AccountBalance, BadgeOutlined, Business,
-    EmailOutlined, LocationOnOutlined, MoveToInbox,
+    EmailOutlined, LocalAtm, LocationOnOutlined, MoveToInbox,
     NoteAdd, PhoneOutlined, ReceiptLong, WarningAmberOutlined,
 } from "@mui/icons-material";
 import type { SvgIconComponent } from "@mui/icons-material";
@@ -15,11 +15,12 @@ import { computeTotal } from "../components/invoice/invoiceUtils";
 interface Tile { label: string; icon: SvgIconComponent; color: string; page: string; }
 
 const tiles: Tile[] = [
-    { label: "Vytvoriť faktúru",       icon: NoteAdd,        color: "#1976d2", page: "new-invoice"          },
-    { label: "Vydané faktúry",         icon: ReceiptLong,    color: "#7b1fa2", page: "invoices/issued"      },
-    { label: "Prijaté faktúry",        icon: MoveToInbox,    color: "#e65100", page: "invoices/received"    },
-    { label: "Bankové pohyby",         icon: AccountBalance, color: "#00695c", page: "bank"                 },
-    { label: "Údaje firmy",            icon: Business,       color: "#2e7d32", page: "edit"                 },
+    { label: "Vytvoriť faktúru", icon: NoteAdd, color: "#1976d2", page: "new-invoice" },
+    { label: "Vydané faktúry", icon: ReceiptLong, color: "#7b1fa2", page: "invoices/issued" },
+    { label: "Prijaté faktúry", icon: MoveToInbox, color: "#e65100", page: "invoices/received" },
+    { label: "Bankové pohyby", icon: AccountBalance, color: "#00695c", page: "bank" },
+    { label: "Pokladňa", icon: LocalAtm, color: "#6a1b9a", page: "cash" },
+    { label: "Údaje firmy", icon: Business, color: "#2e7d32", page: "edit" },
 ];
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ interface DashboardStats {
     overdueIssued: InvoiceStat;
     overdueReceived: InvoiceStat;
     accountBalances: { name: string; balance: number; currency: string }[];
+    cashBalances: { name: string; balance: number; currency: string }[];
 }
 
 const fmtCurrency = (n: number, currency: string) =>
@@ -66,11 +68,11 @@ interface StatCardProps {
 }
 
 const STAT_COLORS = {
-    default: { bg: "grey.100",    text: "text.primary",    icon: "text.secondary"  },
-    warning: { bg: "warning.50",  text: "warning.dark",    icon: "warning.main"    },
-    error:   { bg: "error.50",    text: "error.dark",      icon: "error.main"      },
-    success: { bg: "success.50",  text: "success.dark",    icon: "success.main"    },
-    info:    { bg: "info.50",     text: "info.dark",       icon: "info.main"       },
+    default: { bg: "", text: "text.primary", icon: "text.secondary" },
+    warning: { bg: "warning.50", text: "warning.dark", icon: "warning.main" },
+    error: { bg: "error.50", text: "error.dark", icon: "error.main" },
+    success: { bg: "success.50", text: "success.dark", icon: "success.main" },
+    info: { bg: "info.50", text: "info.dark", icon: "info.main" },
 };
 
 const StatCard: React.FC<StatCardProps> = ({ label, value, sub, color, icon }) => {
@@ -122,10 +124,12 @@ export const CompanyHome = () => {
             window.api.invoice.byCustomer(activeCompany.ico),
             window.api.bankTransaction.byCompany(activeCompany.id!),
             window.api.bankAccount.byCompany(activeCompany.id!),
-        ]).then(([issued, received, txs, accounts]) => {
-            const unpaidIssued   = (issued   as any[]).filter(i => !i.paid);
+            window.api.cashEntry.byCompany(activeCompany.id!),
+            window.api.cashRegister.byCompany(activeCompany.id!),
+        ]).then(([issued, received, txs, accounts, cashEntries, cashRegs]) => {
+            const unpaidIssued = (issued as any[]).filter(i => !i.paid);
             const unpaidReceived = (received as any[]).filter(i => !i.paid);
-            const overdueIssued   = unpaidIssued.filter(  i => i.dueDate && new Date(i.dueDate) < today);
+            const overdueIssued = unpaidIssued.filter(i => i.dueDate && new Date(i.dueDate) < today);
             const overdueReceived = unpaidReceived.filter(i => i.dueDate && new Date(i.dueDate) < today);
 
             const balanceMap = new Map<number, number>();
@@ -138,12 +142,25 @@ export const CompanyHome = () => {
                 balance: balanceMap.get(a.id) ?? 0,
                 currency: a.currency as string,
             }));
+
+            const cashBalanceMap = new Map<number, number>();
+            (cashEntries as any[]).forEach(e => {
+                if (!e.cashRegisterId) return;
+                cashBalanceMap.set(e.cashRegisterId, (cashBalanceMap.get(e.cashRegisterId) ?? 0) + (e.amount as number));
+            });
+            const cashBalances = (cashRegs as any[]).map(r => ({
+                name: r.name as string,
+                balance: cashBalanceMap.get(r.id) ?? 0,
+                currency: r.currency as string,
+            }));
+
             setStats({
-                unpaidIssued:   calcStat(unpaidIssued),
+                unpaidIssued: calcStat(unpaidIssued),
                 unpaidReceived: calcStat(unpaidReceived),
-                overdueIssued:  calcStat(overdueIssued),
+                overdueIssued: calcStat(overdueIssued),
                 overdueReceived: calcStat(overdueReceived),
                 accountBalances,
+                cashBalances,
             });
         });
     }, [activeCompany]);
@@ -159,9 +176,9 @@ export const CompanyHome = () => {
 
     const address = [activeCompany.address, activeCompany.zip, activeCompany.city].filter(Boolean).join(", ");
     const idFields = [
-        activeCompany.ico   && { label: "IČO",    value: activeCompany.ico,   mono: true  },
-        activeCompany.dic   && { label: "DIČ",    value: activeCompany.dic,   mono: true  },
-        activeCompany.icDph && { label: "IČ DPH", value: activeCompany.icDph, mono: true  },
+        activeCompany.ico && { label: "IČO", value: activeCompany.ico, mono: true },
+        activeCompany.dic && { label: "DIČ", value: activeCompany.dic, mono: true },
+        activeCompany.icDph && { label: "IČ DPH", value: activeCompany.icDph, mono: true },
     ].filter(Boolean) as { label: string; value: string; mono: boolean }[];
 
     return (
@@ -269,24 +286,47 @@ export const CompanyHome = () => {
                         </Paper>
                     )}
 
-                    <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
-                        <Stack gap={0.75}>
-                            <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
-                                Hotovosť a účty
-                            </Typography>
-                            <Stack direction="row" gap={1} flexWrap="wrap">
-                                {stats.accountBalances.map(a => (
-                                    <StatCard
-                                        key={a.name}
-                                        label={a.name}
-                                        value={fmtCurrency(a.balance, a.currency)}
-                                        color={a.balance >= 0 ? "success" : "error"}
-                                        icon={<AccountBalance />}
-                                    />
-                                ))}
+                    {stats.accountBalances.length > 0 && (
+                        <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
+                            <Stack gap={0.75}>
+                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
+                                    Bankové účty
+                                </Typography>
+                                <Stack direction="row" gap={1} flexWrap="wrap">
+                                    {stats.accountBalances.map(a => (
+                                        <StatCard
+                                            key={a.name}
+                                            label={a.name}
+                                            value={fmtCurrency(a.balance, a.currency)}
+                                            color={a.balance >= 0 ? "success" : "error"}
+                                            icon={<AccountBalance />}
+                                        />
+                                    ))}
+                                </Stack>
                             </Stack>
-                        </Stack>
-                    </Paper>
+                        </Paper>
+                    )}
+
+                    {stats.cashBalances.length > 0 && (
+                        <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
+                            <Stack gap={0.75}>
+                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
+                                    Pokladne
+                                </Typography>
+                                <Stack direction="row" gap={1} flexWrap="wrap">
+                                    {stats.cashBalances.map(c => (
+                                        <StatCard
+                                            key={c.name}
+                                            label={c.name}
+                                            value={fmtCurrency(c.balance, c.currency)}
+                                            color={c.balance >= 0 ? "success" : "error"}
+                                            icon={<LocalAtm />}
+                                        />
+                                    ))}
+                                </Stack>
+                            </Stack>
+                        </Paper>
+                    )}
                 </Stack>
             )}
 

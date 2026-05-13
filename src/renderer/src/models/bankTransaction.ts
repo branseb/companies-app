@@ -20,6 +20,7 @@ export interface Tx {
     note?: string;
     linkedInvoiceId?: number;
     bankAccountId?: number;
+    pairedCashEntryId?: number;
 }
 
 export interface InvoiceOption {

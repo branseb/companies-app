@@ -6,6 +6,7 @@ import { useCompany } from "../context/company";
 import { InvoiceForm } from "../components/InvoiceForm";
 import { InvoiceList } from "../components/InvoiceList";
 import { BankTransactionList } from "../components/BankTransactionList";
+import { CashRegisterList } from "../components/CashRegisterList";
 import { CompanyHome } from "./CompanyHome";
 import { EditCompanyPage } from "./EditCompanyPage";
 
@@ -62,6 +63,7 @@ export const CompanyDashboard = () => {
                         <InvoiceForm onAdd={() => { setRefresh(r => !r); navigate(`${base}/invoices/issued`); }} />
                     } />
                     <Route path="bank" element={<BankTransactionList />} />
+                    <Route path="cash" element={<CashRegisterList />} />
                     <Route path="edit" element={<EditCompanyPage onSaved={() => navigate(base)} />} />
                     <Route path="*" element={<Navigate to={base} replace />} />
                 </Routes>

@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { BankTransaction } from "../database/entities/bankTransaction";
 import { Invoice } from "../database/entities/invoice";
 import { Company } from "../database/entities/company";
+import { CashEntry } from "../database/entities/cashEntry";
 
 export const registerBankTransactionIpc = (db: DataSource) => {
 
@@ -75,6 +76,7 @@ export const registerBankTransactionIpc = (db: DataSource) => {
     ipcMain.handle("bankTransaction:delete", async (_event, id: number) => {
         const tx = await db.getRepository(BankTransaction).findOneBy({ id });
         if (tx?.linkedInvoiceId) await db.getRepository(Invoice).update(tx.linkedInvoiceId, { paid: false, paidDate: null as any });
+        if (tx?.pairedCashEntryId) await db.getRepository(CashEntry).update(tx.pairedCashEntryId, { pairedBankTransactionId: null as any });
         return db.getRepository(BankTransaction).delete(id);
     });
 };

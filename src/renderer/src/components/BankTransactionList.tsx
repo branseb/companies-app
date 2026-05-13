@@ -5,7 +5,7 @@ import {
     Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { Add, AutoAwesome, DeleteOutline, EditNote, FileUpload, LinkOff, ManageAccounts, Receipt } from "@mui/icons-material";
+import { Add, AutoAwesome, DeleteOutline, EditNote, FileUpload, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
 import type { BankAccount } from "../models/bankTransaction";
 import { useCompany } from "../context/company";
 import { BankTransactionForm } from "./BankTransactionForm";
@@ -27,6 +27,8 @@ export const BankTransactionList: React.FC = () => {
     const [transactions, setTransactions] = useState<Tx[]>([]);
     const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
+    const [cashEntries, setCashEntries] = useState<{ id: number; date: string; amount: number; currency: string; description?: string; cashRegisterId?: number }[]>([]);
+    const [cashRegisters, setCashRegisters] = useState<{ id: number; name: string }[]>([]);
     const [activeAccountId, setActiveAccountId] = useState<number | null>(null);
     const [manageDialog, setManageDialog] = useState(false);
     const [showForm, setShowForm] = useState(false);
@@ -65,7 +67,17 @@ export const BankTransactionList: React.FC = () => {
         setInvoices([...issued.map((i: any) => toInvoiceOption(i, "issued")), ...received.map((i: any) => toInvoiceOption(i, "received"))]);
     }, [activeCompany]);
 
-    useEffect(() => { load(); loadInvoices(); loadAccounts(); }, [load, loadInvoices, loadAccounts]);
+    const loadCash = useCallback(async () => {
+        if (!activeCompany?.id) return;
+        const [entries, regs] = await Promise.all([
+            window.api.cashEntry.byCompany(activeCompany.id),
+            window.api.cashRegister.byCompany(activeCompany.id),
+        ]);
+        setCashEntries(entries);
+        setCashRegisters(regs);
+    }, [activeCompany?.id]);
+
+    useEffect(() => { load(); loadInvoices(); loadAccounts(); loadCash(); }, [load, loadInvoices, loadAccounts, loadCash]);
 
     const showSnack = (message: string, severity: "success" | "error" = "success") =>
         setSnackbar({ open: true, message, severity });
@@ -218,6 +230,7 @@ export const BankTransactionList: React.FC = () => {
                                 <TableCell>VS</TableCell>
                                 <TableCell align="right">Suma</TableCell>
                                 <TableCell>Faktúra</TableCell>
+                                <TableCell>Pokladňa</TableCell>
                                 <TableCell>Poznámka</TableCell>
                                 <TableCell padding="checkbox" />
                             </TableRow>
@@ -268,6 +281,34 @@ export const BankTransactionList: React.FC = () => {
                                                     </IconButton>
                                                 </Tooltip>
                                             )}
+                                        </TableCell>
+                                        {/* Paired cash entry indicator */}
+                                        <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                            {tx.pairedCashEntryId ? (() => {
+                                                const entry = cashEntries.find(e => e.id === tx.pairedCashEntryId);
+                                                const reg = entry?.cashRegisterId ? cashRegisters.find(r => r.id === entry.cashRegisterId) : undefined;
+                                                return (
+                                                    <Stack direction="row" alignItems="center" gap={0.5}>
+                                                        <Chip
+                                                            icon={<LocalAtm sx={{ fontSize: 14 }} />}
+                                                            label={reg ? reg.name : (entry ? `${entry.date.slice(0, 10)}` : `#${tx.pairedCashEntryId}`)}
+                                                            size="small"
+                                                            color="info"
+                                                            variant="outlined"
+                                                            title={entry ? `${entry.date.slice(0, 10)} · ${entry.amount >= 0 ? "+" : ""}${entry.amount} ${entry.currency}` : ""}
+                                                        />
+                                                        <Tooltip title="Odpojiť od pokladne">
+                                                            <IconButton size="small" onClick={async () => {
+                                                                await window.api.cashEntry.pairBankTransaction(tx.pairedCashEntryId!, null);
+                                                                setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, pairedCashEntryId: undefined } : t));
+                                                                setCashEntries(prev => prev.map(e => e.id === tx.pairedCashEntryId ? { ...e, pairedBankTransactionId: undefined } : e));
+                                                            }}>
+                                                                <LinkOff sx={{ fontSize: 14 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </Stack>
+                                                );
+                                            })() : null}
                                         </TableCell>
                                         <TableCell sx={{ maxWidth: 220 }}>
                                             {tx.note && <Typography variant="body2" color="text.secondary" fontStyle="italic" sx={{ whiteSpace: "pre-wrap" }}>{tx.note}</Typography>}

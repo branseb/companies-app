@@ -52,6 +52,21 @@ export const registerInvoiceIpc = (db: DataSource) => {
         });
     });
 
+    ipcMain.handle("invoice:update", async (_event, id: number, faktura) => {
+        await db.getRepository(Invoice).update(id, {
+            invoiceNumber: faktura.id,
+            issueDate: faktura.issueDate,
+            dueDate: faktura.dueDate,
+            currency: faktura.documentCurrencyCode,
+            deliveryDate: faktura.delivery?.actualDeliveryDate ?? (null as any),
+            items: JSON.stringify(faktura.invoiceLine),
+            supplier: JSON.stringify(faktura.accountingSupplierParty),
+            customer: JSON.stringify(faktura.accountingCustomerParty),
+            supplierIco: stripIco(faktura.accountingSupplierParty.partyLegalEntity?.companyID),
+            customerIco: stripIco(faktura.accountingCustomerParty.partyLegalEntity?.companyID),
+        });
+    });
+
     ipcMain.handle("invoice:delete", async (_event, id: number) => {
         return db.getRepository(Invoice).delete(id);
     });
