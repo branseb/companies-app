@@ -47,6 +47,21 @@ function attr(el: Element | null, tag: string, attribute: string): string {
     return child?.getAttribute(attribute) ?? "";
 }
 
+function extractNrtv(raw: string): string {
+    if (!raw) return "";
+    const inner = new DOMParser().parseFromString(raw, "application/xml");
+    if (inner.querySelector("parsererror")) return "";
+    return inner.querySelector("Nrtv")?.textContent?.trim() ?? "";
+}
+
+function parseEndToEndSymbols(s: string) {
+    return {
+        vs: s.match(/\/VS(\d+)/)?.[1],
+        ks: s.match(/\/KS(\d+)/)?.[1],
+        ss: s.match(/\/SS(\d+)/)?.[1],
+    };
+}
+
 function parseCamt053(doc: Document): { rows: ImportRow[]; accountIban?: string } | null {
     const entries = doc.querySelectorAll("Ntry");
     if (!entries.length) return null;
@@ -63,14 +78,21 @@ function parseCamt053(doc: Document): { rows: ImportRow[]; accountIban?: string 
         const txDtls = ntry.querySelector("TxDtls");
         const partyEl = sign === 1 ? (txDtls?.querySelector("Dbtr") ?? null) : (txDtls?.querySelector("Cdtr") ?? null);
         const acctEl  = sign === 1 ? (txDtls?.querySelector("DbtrAcct") ?? null) : (txDtls?.querySelector("CdtrAcct") ?? null);
+        const endToEndId = txt(txDtls, "Refs", "EndToEndId");
+        const { vs, ks, ss } = parseEndToEndSymbols(endToEndId);
+        const nrtv = extractNrtv(txt(ntry, "AddtlNtryInf"));
+        // EndToEndId contains raw /VS.../KS.../SS... — not useful as description
+        const endToEndDesc = endToEndId.startsWith("/") ? "" : endToEndId;
         rows.push({
             date: parseDate(bookDt) ?? bookDt,
             amount: sign * amount,
             currency: ccy,
-            description: txt(txDtls, "RmtInf", "Ustrd") || txt(txDtls, "Refs", "EndToEndId") || txt(ntry, "AddtlNtryInf") || undefined,
+            description: txt(txDtls, "RmtInf", "Ustrd") || nrtv || endToEndDesc || undefined,
             counterpartyName: txt(partyEl, "Nm") || undefined,
             counterpartyIban: txt(acctEl, "Id", "IBAN") || txt(acctEl, "IBAN") || undefined,
-            variableSymbol: txt(txDtls, "RmtInf", "Strd", "CdtrRefInf", "Ref") || txt(txDtls, "RmtInf", "Strd", "AddtlRmtInf") || undefined,
+            variableSymbol: txt(txDtls, "RmtInf", "Strd", "CdtrRefInf", "Ref") || txt(txDtls, "RmtInf", "Strd", "AddtlRmtInf") || vs || undefined,
+            constantSymbol: ks || undefined,
+            specificSymbol: ss || undefined,
         });
     });
     return rows.length ? { rows, accountIban } : null;
