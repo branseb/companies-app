@@ -1,9 +1,4 @@
-import {
-    Column,
-    Entity,
-    ManyToOne,
-    PrimaryGeneratedColumn
-} from "typeorm";
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Company } from "./company";
 
 @Entity()
@@ -11,40 +6,40 @@ export class Invoice {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     invoiceNumber!: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     issueDate!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     dueDate?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     deliveryDate?: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     currency!: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     items!: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     supplierIco!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     customerIco?: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     supplier!: string;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     customer!: string;
 
-    @Column({ type: 'boolean', default: false })
+    @Column({ type: 'bit', default: false })
     paid!: boolean;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     paidDate?: string;
 
     @ManyToOne(() => Company)

@@ -10,27 +10,29 @@
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
+    "@types/pg": "^8.20.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "@types/qrcode": "^1.5.6",
     "electron": "^32.0.0",
     "electron-builder": "^25.0.0",
     "electron-vite": "^2.3.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "sqlite3": "^5.1.7",
-    "typeorm": "^0.3.20",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
     "fast-xml-parser": "^5.7.2",
     "jspdf": "^2.5.1",
+    "mssql": "^10.0.4",
+    "pg": "^8.20.0",
     "qrcode": "^1.5.4",
-    "react-router-dom": "^7.15.0"
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^7.15.0",
+    "typeorm": "^0.3.20"
   }
 }

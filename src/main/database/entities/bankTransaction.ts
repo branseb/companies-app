@@ -6,43 +6,43 @@ export class BankTransaction {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     date!: string;
 
-    @Column({ type: 'real' })
+    @Column({ type: 'float' })
     amount!: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     currency!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     description?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     counterpartyName?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     counterpartyIban?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     variableSymbol?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     constantSymbol?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     specificSymbol?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     note?: string;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     linkedInvoiceId?: number;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     bankAccountId?: number;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     pairedCashEntryId?: number;
 
     @ManyToOne(() => Company)

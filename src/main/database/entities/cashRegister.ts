@@ -6,13 +6,13 @@ export class CashRegister {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     name!: string;
 
-    @Column({ type: 'text', default: 'EUR' })
+    @Column({ type: 'nvarchar', length: 'max', default: 'EUR' })
     currency!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     note?: string;
 
     @ManyToOne(() => Company)

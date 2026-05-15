@@ -6,28 +6,28 @@ export class CashEntry {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ type: 'text' })
+    @Column({ type: 'nvarchar', length: 'max' })
     date!: string;
 
-    @Column({ type: 'real' })
+    @Column({ type: 'float' })
     amount!: number;
 
-    @Column({ type: 'text', default: 'EUR' })
+    @Column({ type: 'nvarchar', length: 'max', default: 'EUR' })
     currency!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     description?: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: 'nvarchar', length: 'max', nullable: true })
     note?: string;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     cashRegisterId?: number;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     linkedInvoiceId?: number;
 
-    @Column({ type: 'integer', nullable: true })
+    @Column({ type: 'int', nullable: true })
     pairedBankTransactionId?: number;
 
     @ManyToOne(() => Company)

@@ -30,9 +30,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  const dbPath = path.join(app.getPath("userData"), "app.db");
-
-  const db = createDataSource(dbPath);
+  const db = createDataSource();
   await db.initialize();
   registerInvoiceIpc(db);
   await registerCompanyIpc(db);
@@ -43,7 +41,6 @@ app.whenReady().then(async () => {
   const win = createWindow();
   registerWindowIpc(win);
 });
-
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
