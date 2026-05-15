@@ -28,10 +28,8 @@ export function mapToEN16931(data: SimpleInvoice): EN16931Invoice {
                 && toISODate(data.delivery?.actualDeliveryDate)
         },
         paymentMeans: {
-            payeeFinancialAccount: {
-                iban: 'SK 5156 1558 6455 6456 7888',
-                bic: 'TATRASK'
-            }, paymentMeansCode: 'prevodny prikaz '
+            paymentMeansCode: '31',
+            paymentID: data.invoiceNumber,
         },
         accountingSupplierParty: {
             partyName: data.supplier.name,
@@ -50,10 +48,10 @@ export function mapToEN16931(data: SimpleInvoice): EN16931Invoice {
         accountingCustomerParty: {
             partyName: data.customer.name,
             postalAddress: {
-                streetName: "Dodavatelska adresa 586/94",
-                cityName: "Hurbanovo",
-                postalZone: "978 57",
-                country: "SK"
+                streetName: data.customer.address ?? '',
+                cityName: data.customer.city ?? '',
+                postalZone: data.customer.zip ?? '',
+                country: data.customer.country ?? 'SK'
             },
             partyLegalEntity: {
                 companyID: data.customer.ico ?? ''

@@ -4,48 +4,53 @@ import type { PdfInvoice } from "./generate.js";
 
 type DrawDatesOptions = { x: number; y: number; width: number };
 
-export const drawDates = (doc: jsPDF, faktura: PdfInvoice, options: DrawDatesOptions) => {
+export const drawDates = async (doc: jsPDF, faktura: PdfInvoice, options: DrawDatesOptions): Promise<number> => {
     const { x, y, width } = options;
-    const lineHeight = 5;
-    const padding = 4;
+    const lh = 5;
+    const pad = 4;
+    const qrSize = 28;
 
-    const rows: { label: string; value: string }[] = [];
-    rows.push({ label: "Dátum vystavenia:", value: faktura.issueDate });
-    if (faktura.dueDate) rows.push({ label: "Dátum splatnosti:", value: faktura.dueDate });
+    const rows: { label: string; value: string }[] = [
+        { label: "Dátum vystavenia:", value: faktura.issueDate },
+    ];
+    if (faktura.dueDate)
+        rows.push({ label: "Dátum splatnosti:", value: faktura.dueDate });
     if (faktura.delivery?.actualDeliveryDate)
         rows.push({ label: "Dátum dodania:", value: faktura.delivery.actualDeliveryDate });
-    if (faktura.paymentMeans?.paymentMeansCode)
-        rows.push({ label: "Platba:", value: faktura.paymentMeans.paymentMeansCode });
-    rows.push({ label: "", value: "" });
+    if (faktura.paymentMeans?.payeeFinancialAccount?.iban)
+        rows.push({ label: "IBAN:", value: faktura.paymentMeans.payeeFinancialAccount.iban });
+    if (faktura.paymentMeans?.payeeFinancialAccount?.bic)
+        rows.push({ label: "SWIFT:", value: faktura.paymentMeans.payeeFinancialAccount.bic });
 
-    const account = faktura.paymentMeans?.payeeFinancialAccount;
-    if (account?.iban) rows.push({ label: "IBAN:", value: account.iban });
-    if (account?.bic) rows.push({ label: "SWIFT:", value: account.bic });
+    const textHeight = rows.length * lh;
+    const height = Math.max(textHeight, qrSize + lh + 4) + pad * 2;
 
-    const height = rows.length * lineHeight + padding * 2;
-    doc.setFillColor(230, 230, 230);
-    doc.rect(x, y - padding * 2, width, height, "F");
+    doc.setFillColor(235, 235, 235);
+    doc.rect(x, y - pad, width, height, "F");
 
     doc.setFont("Roboto", "normal");
     doc.setFontSize(9);
 
-    let currentY = y;
-    rows.forEach((row) => {
-        doc.text(row.label, x + 2, currentY);
-        doc.text(row.value, x + 30, currentY);
-        currentY += lineHeight;
+    let cy = y;
+    rows.forEach(row => {
+        doc.text(row.label, x + 2, cy);
+        doc.text(row.value, x + 38, cy);
+        cy += lh;
     });
 
-    const rowGap = 100;
-    doc.text("VS:", x + rowGap + 2, y);
-    doc.text(faktura.paymentMeans?.paymentID ?? faktura.id, x + rowGap + 10, y);
+    // VS + QR na pravej strane
+    const qrX = x + width - qrSize - 4;
+    const vs = faktura.paymentMeans?.paymentID ?? faktura.id;
+    doc.setFont("Roboto", "700");
+    doc.text("VS: " + vs, qrX + qrSize / 2, y, { align: "center" });
+    doc.setFont("Roboto", "normal");
 
-    drawPaymentQR(doc, faktura, x + rowGap, y + 10);
+    await drawPaymentQR(doc, faktura, qrX, y + lh);
 
-    return y + height;
+    return y - pad + height;
 };
 
-const drawPaymentQR = async (doc: jsPDF, faktura: PdfInvoice, x: number, y: number, size = 30) => {
+const drawPaymentQR = async (doc: jsPDF, faktura: PdfInvoice, x: number, y: number, size = 28) => {
     const qrDataURL = await generatePaymentQR(faktura);
     if (!qrDataURL) return;
     doc.addImage(qrDataURL, "PNG", x, y, size, size);

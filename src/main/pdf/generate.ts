@@ -39,11 +39,12 @@ export const buildPdfInvoice = (raw: {
     invoiceNumber: string;
     issueDate: string;
     dueDate?: string;
+    deliveryDate?: string;
     currency: string;
     items: string;
     supplier: string;
     customer: string;
-}): PdfInvoice => {
+}, iban?: string): PdfInvoice => {
     const invoiceLine: InvoiceLine[] = JSON.parse(raw.items);
     const net = invoiceLine.reduce((s, l) => s + l.lineExtensionAmount, 0);
     const tax = invoiceLine.reduce(
@@ -55,6 +56,12 @@ export const buildPdfInvoice = (raw: {
         issueDate: raw.issueDate,
         dueDate: raw.dueDate,
         documentCurrencyCode: raw.currency,
+        delivery: raw.deliveryDate ? { actualDeliveryDate: raw.deliveryDate } : undefined,
+        paymentMeans: {
+            paymentMeansCode: '31',
+            paymentID: raw.invoiceNumber,
+            ...(iban ? { payeeFinancialAccount: { iban } } : {}),
+        },
         accountingSupplierParty: JSON.parse(raw.supplier),
         accountingCustomerParty: JSON.parse(raw.customer),
         invoiceLine,
@@ -62,9 +69,8 @@ export const buildPdfInvoice = (raw: {
     };
 };
 
-export const generatePdfBase64 = (faktura: PdfInvoice): string => {
+export const generatePdfBase64 = async (faktura: PdfInvoice): Promise<string> => {
     const doc = new jsPDF();
-    const setFontSize = (size: number) => doc.setFontSize(size);
 
     doc.addFileToVFS("Roboto-Regular.ttf", robotoBase64);
     doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
@@ -73,57 +79,111 @@ export const generatePdfBase64 = (faktura: PdfInvoice): string => {
     doc.setFont("Roboto", "normal");
 
     const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 10;
+    const rightX = pageWidth - marginX;
 
-    setFontSize(16);
-    doc.text("FAKTÚRA č.: " + faktura.id, pageWidth / 2, 15, { align: "left" });
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("Roboto", "700");
+    doc.text("FAKTÚRA", marginX, 18);
+    doc.setFontSize(12);
+    doc.setFont("Roboto", "normal");
+    doc.text("č. " + faktura.id, marginX, 25);
 
-    const verticalOffset = 10;
-    const supplierY = drawParty(doc, faktura.accountingSupplierParty, { x: 10, y: 35 + verticalOffset, label: "Dodávateľ" });
-    const customerY = drawParty(doc, faktura.accountingCustomerParty, { x: 105, y: 35 + verticalOffset, label: "Odberateľ", withBorder: true });
+    // Parties
+    const supplierY = drawParty(doc, faktura.accountingSupplierParty, { x: marginX, y: 35, label: "Dodávateľ" });
+    const customerY = drawParty(doc, faktura.accountingCustomerParty, { x: 105, y: 35, label: "Odberateľ", withBorder: true });
 
-    const datesX = 10;
     const datesY = Math.max(supplierY, customerY) + 8;
-    const datesEndY = drawDates(doc, faktura, { x: datesX, y: datesY, width: pageWidth - datesX * 2 });
+    const datesEndY = await drawDates(doc, faktura, { x: marginX, y: datesY, width: pageWidth - marginX * 2 });
 
-    let startY = datesEndY + 6;
-    const lineHeight = 7;
-    setFontSize(9);
+    // Items table
+    let y = datesEndY + 8;
+    const lh = 7;
+
+    const COL = {
+        num:   marginX,
+        name:  18,
+        qty:   107,
+        price: 128,
+        vat:   143,
+        base:  167,
+        total: rightX - 2,
+    };
+
+    doc.setFontSize(8.5);
+    doc.setFont("Roboto", "700");
+    doc.text("#", COL.num, y);
+    doc.text("Popis", COL.name, y);
+    doc.text("Množ.", COL.qty, y, { align: "right" });
+    doc.text("J.cena", COL.price, y, { align: "right" });
+    doc.text("DPH%", COL.vat, y, { align: "right" });
+    doc.text("Základ", COL.base, y, { align: "right" });
+    doc.text("Spolu", COL.total, y, { align: "right" });
+
+    y += 2;
+    doc.setLineWidth(0.4);
+    doc.line(marginX, y, rightX, y);
+    y += lh - 2;
+
     doc.setFont("Roboto", "normal");
 
-    doc.text("Č.", 10, startY);
-    doc.text("Položka", 20, startY);
-    doc.text("Množstvo", 100, startY, { align: "right" });
-    doc.text("Cena/jedn.", 130, startY, { align: "right" });
-    doc.text("Celkom", 160, startY, { align: "right" });
+    const taxGroups = new Map<number, { taxable: number; tax: number }>();
 
-    startY += 2;
-    doc.setLineWidth(0.3);
-    doc.line(10, startY, pageWidth - 10, startY);
-    startY += lineHeight - 2;
+    faktura.invoiceLine?.forEach((line, i) => {
+        const rate = line.item.classifiedTaxCategory?.percent ?? 0;
+        const base = line.lineExtensionAmount;
+        const vat  = base * rate / 100;
+        const total = base + vat;
 
-    faktura.invoiceLine?.forEach((line, index) => {
-        const total = line.invoicedQuantity * line.price.priceAmount;
-        doc.text((index + 1).toString(), 10, startY);
-        doc.text(line.item.name, 20, startY);
-        doc.text(line.invoicedQuantity.toString(), 100, startY, { align: "right" });
-        doc.text(line.price.priceAmount.toFixed(2), 130, startY, { align: "right" });
-        doc.text(total.toFixed(2), 160, startY, { align: "right" });
-        startY += lineHeight;
+        const maxNameWidth = COL.qty - COL.name - 2;
+        const nameLines = doc.splitTextToSize(line.item.name, maxNameWidth) as string[];
+
+        doc.text(String(i + 1),                        COL.num,   y);
+        doc.text(nameLines[0],                         COL.name,  y);
+        doc.text(String(line.invoicedQuantity),        COL.qty,   y, { align: "right" });
+        doc.text(line.price.priceAmount.toFixed(2),    COL.price, y, { align: "right" });
+        doc.text(rate + "%",                           COL.vat,   y, { align: "right" });
+        doc.text(base.toFixed(2),                      COL.base,  y, { align: "right" });
+        doc.text(total.toFixed(2),                     COL.total, y, { align: "right" });
+        y += lh;
+
+        const g = taxGroups.get(rate) ?? { taxable: 0, tax: 0 };
+        taxGroups.set(rate, { taxable: g.taxable + base, tax: g.tax + vat });
     });
 
-    startY += 2;
-    doc.line(10, startY, pageWidth - 10, startY);
-    startY += lineHeight;
+    y += 2;
+    doc.setLineWidth(0.3);
+    doc.line(marginX, y, rightX, y);
+    y += lh;
 
-    setFontSize(10);
+    // Tax summary
+    doc.setFontSize(8.5);
+    doc.setFont("Roboto", "normal");
+    taxGroups.forEach((g, rate) => {
+        doc.text(`Základ DPH ${rate}%:`, COL.base,  y, { align: "right" });
+        doc.text(g.taxable.toFixed(2),   COL.total, y, { align: "right" });
+        y += lh - 1;
+        doc.text(`DPH ${rate}%:`,        COL.base,  y, { align: "right" });
+        doc.text(g.tax.toFixed(2),       COL.total, y, { align: "right" });
+        y += lh - 1;
+    });
+
+    doc.setLineWidth(0.5);
+    doc.line(COL.vat + 2, y, rightX, y);
+    y += lh;
+
+    doc.setFontSize(11);
     doc.setFont("Roboto", "700");
-    doc.text("Celkom na úhradu:", 130, startY, { align: "right" });
-    doc.text(`${faktura.legalMonetaryTotal.payableAmount.toFixed(2)} ${faktura.documentCurrencyCode}`, 160, startY, { align: "right" });
+    doc.text("Celkom na úhradu:", COL.base, y, { align: "right" });
+    doc.text(
+        `${faktura.legalMonetaryTotal.payableAmount.toFixed(2)} ${faktura.documentCurrencyCode}`,
+        COL.total, y, { align: "right" }
+    );
 
-    setFontSize(7);
+    doc.setFontSize(7);
     doc.setFont("Roboto", "normal");
     doc.text("Ďakujeme za Vašu platbu.", pageWidth / 2, 290, { align: "center" });
 
-    const dataUri = doc.output("datauristring");
-    return dataUri.split(",")[1];
+    return doc.output("datauristring").split(",")[1];
 };

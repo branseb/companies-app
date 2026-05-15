@@ -4,14 +4,29 @@ import { buildPdfInvoice, generatePdfBase64 } from "../pdf/generate.js";
 import fs from "fs";
 import path from "path";
 import { Invoice } from "../database/entities/invoice.js";
+import { BankAccount } from "../database/entities/bankAccount.js";
+import { Company } from "../database/entities/company.js";
 
 export const registerPdfIpc = (db: DataSource) => {
     ipcMain.handle("pdf:download", async (_event, invoiceId: number) => {
-        const raw = await db.getRepository(Invoice).findOneOrFail({ where: { id: invoiceId } });
-        const faktura = buildPdfInvoice(raw);
-        const base64 = generatePdfBase64(faktura);
+        const raw = await db.getRepository(Invoice).findOneOrFail({
+            where: { id: invoiceId },
+        });
 
-        const filename = `faktura${raw.invoiceNumber}.pdf`;
+        let iban: string | undefined;
+        const company = await db.getRepository(Company).findOneBy({ ico: raw.supplierIco });
+        if (company) {
+            const accounts = await db.getRepository(BankAccount).find({
+                where: { company: { id: company.id } },
+                order: { id: "ASC" },
+            });
+            iban = accounts[0]?.iban;
+        }
+
+        const faktura = buildPdfInvoice(raw, iban);
+        const base64 = await generatePdfBase64(faktura);
+
+        const filename = `faktura_${raw.invoiceNumber}.pdf`;
         const filePath = path.join(app.getPath("downloads"), filename);
         fs.writeFileSync(filePath, Buffer.from(base64, "base64"));
         return filePath;

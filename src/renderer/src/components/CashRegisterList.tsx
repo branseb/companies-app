@@ -5,7 +5,7 @@ import {
     Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
+import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt, SaveOutlined } from "@mui/icons-material";
 import { useCompany } from "../context/company";
 import { useNavigate } from "react-router-dom";
 import type { CashEntry, CashRegister } from "../models/cashEntry";
@@ -335,7 +335,7 @@ export const CashRegisterList: React.FC = () => {
         ? byRegister.filter(e => e.description?.toLowerCase().includes(q) || e.note?.toLowerCase().includes(q))
         : byRegister;
 
-    const income  = displayed.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
+    const income = displayed.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
     const expense = displayed.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0);
     const currency = displayed[0]?.currency ?? registers.find(r => r.id === activeRegisterId)?.currency ?? "EUR";
 
