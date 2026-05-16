@@ -17,11 +17,22 @@ contextBridge.exposeInMainWorld("api", {
   firm: {
     get: (ico: string) => ipcRenderer.invoke("firm:get", ico)
   },
+
+  db: {
+    list: () => ipcRenderer.invoke("db:list"),
+    add: (config: any) => ipcRenderer.invoke("db:add", config),
+    update: (config: any) => ipcRenderer.invoke("db:update", config),
+    delete: (id: string) => ipcRenderer.invoke("db:delete", id),
+    connect: (config: any) => ipcRenderer.invoke("db:connect", config),
+    test: (config: any) => ipcRenderer.invoke("db:test", config),
+  },
+
   company: {
-    get: () => ipcRenderer.invoke("companies:get"),
-    add: (data: any) => ipcRenderer.invoke("company:add", data),
+    get: () => ipcRenderer.invoke("company:get"),
+    create: (data: any) => ipcRenderer.invoke("company:create", data),
     update: (data: any) => ipcRenderer.invoke("company:update", data),
   },
+
   bankAccount: {
     byCompany: (companyId: number) => ipcRenderer.invoke("bankAccount:by-company", companyId),
     create: (data: any) => ipcRenderer.invoke("bankAccount:create", data),

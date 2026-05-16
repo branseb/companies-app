@@ -1,13 +1,14 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
-import { createDataSource } from './database/data-source';
 import { registerInvoiceIpc } from './ipc/invoices';
 import { registerCompanyIpc } from './ipc/companies';
+import { registerCompanyConfigIpc } from './ipc/companyConfig';
 import { registerPdfIpc } from './ipc/pdf';
 import { registerWindowIpc } from './ipc/window';
 import { registerBankTransactionIpc } from './ipc/bankTransactions';
 import { registerBankAccountIpc } from './ipc/bankAccounts';
 import { registerCashIpc } from './ipc/cash';
+import { dbManager } from './database/database-manager';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -30,19 +31,19 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  const db = createDataSource();
-  await db.initialize();
-  registerInvoiceIpc(db);
-  await registerCompanyIpc(db);
-  registerPdfIpc(db);
-  registerBankTransactionIpc(db);
-  registerBankAccountIpc(db);
-  registerCashIpc(db);
+  registerCompanyConfigIpc();
+  registerCompanyIpc();
+  registerInvoiceIpc();
+  registerPdfIpc();
+  registerBankTransactionIpc();
+  registerBankAccountIpc();
+  registerCashIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  await dbManager.destroyAll();
   if (process.platform !== 'darwin') app.quit();
 });
 

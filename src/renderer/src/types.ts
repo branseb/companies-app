@@ -1,4 +1,5 @@
 import { Company } from "./models/company";
+import { CompanyConfig } from "./models/companyConfig";
 
 declare global {
 	interface Window {
@@ -16,9 +17,18 @@ declare global {
 				delete: (id: number) => Promise<void>;
 			};
 
+			db: {
+				list: () => Promise<CompanyConfig[]>;
+				add: (config: Omit<CompanyConfig, "id">) => Promise<CompanyConfig>;
+				update: (config: CompanyConfig) => Promise<CompanyConfig>;
+				delete: (id: string) => Promise<void>;
+				connect: (config: CompanyConfig) => Promise<Company>;
+				test: (connectionString: string) => Promise<{ success: boolean; error?: string }>;
+			};
+
 			company: {
-				get: () => Promise<Company[]>;
-				add: (data: Company) => Promise<Company>;
+				get: () => Promise<Company>;
+				create: (data: Company) => Promise<Company>;
 				update: (data: Company) => Promise<Company>;
 			};
 

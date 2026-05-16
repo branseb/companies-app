@@ -1,13 +1,13 @@
 import { ipcMain } from "electron";
-import { DataSource } from "typeorm";
 import { Invoice } from "../database/entities/invoice";
+import { dbManager } from "../database/database-manager";
 
-export const registerInvoiceIpc = (db: DataSource) => {
+export const registerInvoiceIpc = () => {
 
     const stripIco = (ico?: string) => ico?.replace(/\s/g, "") ?? "";
 
     ipcMain.handle("invoice:create", async (_event, faktura) => {
-        const repo = db.getRepository(Invoice);
+        const repo = dbManager.current.getRepository(Invoice);
         const supplierIco = stripIco(faktura.accountingSupplierParty.partyLegalEntity?.companyID);
 
         const existing = await repo.findOneBy({ invoiceNumber: faktura.id, supplierIco });
@@ -31,29 +31,28 @@ export const registerInvoiceIpc = (db: DataSource) => {
     });
 
     ipcMain.handle("invoice:get", async (_event, id: number) => {
-        return db.getRepository(Invoice).findOne({
+        return dbManager.current.getRepository(Invoice).findOne({
             where: { id },
             relations: ["company"],
         });
     });
 
-
     ipcMain.handle("invoice:by-company", async (_event, supplierIco: string) => {
-        return db.getRepository(Invoice).find({
+        return dbManager.current.getRepository(Invoice).find({
             where: { supplierIco: stripIco(supplierIco) },
             relations: ["company"]
         });
     });
 
     ipcMain.handle("invoice:by-customer", async (_event, customerIco: string) => {
-        return db.getRepository(Invoice).find({
+        return dbManager.current.getRepository(Invoice).find({
             where: { customerIco: stripIco(customerIco) },
             relations: ["company"]
         });
     });
 
     ipcMain.handle("invoice:update", async (_event, id: number, faktura) => {
-        await db.getRepository(Invoice).update(id, {
+        await dbManager.current.getRepository(Invoice).update(id, {
             invoiceNumber: faktura.id,
             issueDate: faktura.issueDate,
             dueDate: faktura.dueDate,
@@ -68,17 +67,17 @@ export const registerInvoiceIpc = (db: DataSource) => {
     });
 
     ipcMain.handle("invoice:delete", async (_event, id: number) => {
-        return db.getRepository(Invoice).delete(id);
+        return dbManager.current.getRepository(Invoice).delete(id);
     });
 
     ipcMain.handle("invoice:mark-paid", async (_event, id: number, paid: boolean) => {
-        const repo = db.getRepository(Invoice);
+        const repo = dbManager.current.getRepository(Invoice);
         const paidDate = paid ? new Date().toISOString().split("T")[0] : undefined;
         await repo.update(id, { paid, paidDate: paidDate ?? (null as any) });
     });
 
     ipcMain.handle("invoice:known-parties", async () => {
-        const invoices = await db.getRepository(Invoice).find({ select: ["supplier", "customer"] });
+        const invoices = await dbManager.current.getRepository(Invoice).find({ select: ["supplier", "customer"] });
         const map = new Map<string, object>();
 
         for (const inv of invoices) {
@@ -104,12 +103,10 @@ export const registerInvoiceIpc = (db: DataSource) => {
     });
 
     ipcMain.handle("invoice:next-id", async (_event, supplierIco: string) => {
-        const repo = db.getRepository(Invoice);
+        const repo = dbManager.current.getRepository(Invoice);
 
         const invoices = await repo.find({
-            where: {
-                supplierIco,
-            },
+            where: { supplierIco },
             select: ["invoiceNumber"],
         });
 
@@ -121,16 +118,10 @@ export const registerInvoiceIpc = (db: DataSource) => {
             .filter((num) => num.startsWith(year))
             .map((num) => {
                 const match = num.match(/^(\d{4})(\d{4})$/);
-
-                return match
-                    ? parseInt(match[2], 10)
-                    : 0;
+                return match ? parseInt(match[2], 10) : 0;
             });
 
-        const max = numbers.length
-            ? Math.max(...numbers)
-            : 0;
-
+        const max = numbers.length ? Math.max(...numbers) : 0;
         const next = max + 1;
 
         return `${year}${String(next).padStart(4, "0")}`;

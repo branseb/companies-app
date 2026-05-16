@@ -246,7 +246,7 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({ entry, onClose, onSav
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export const CashRegisterList: React.FC = () => {
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const navigate = useNavigate();
     const [entries, setEntries] = useState<CashEntry[]>([]);
     const [registers, setRegisters] = useState<CashRegister[]>([]);
@@ -464,7 +464,7 @@ export const CashRegisterList: React.FC = () => {
                                                         size="small"
                                                         color={linkedInv.type === "issued" ? "primary" : "warning"}
                                                         variant="outlined"
-                                                        onClick={() => navigate(`/${activeCompany!.id}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
+                                                        onClick={() => navigate(`/${activeConfigId}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
                                                         title={linkedInv.partyName}
                                                         sx={{ cursor: "pointer" }}
                                                     />

@@ -1,6 +1,6 @@
-import { Button, Container, Stack, Typography } from "@mui/material";
+import { Button, CircularProgress, Container, Stack, Typography } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCompany } from "../context/company";
 import { InvoiceForm } from "../components/InvoiceForm";
@@ -11,23 +11,50 @@ import { CompanyHome } from "./CompanyHome";
 import { EditCompanyPage } from "./EditCompanyPage";
 
 export const CompanyDashboard = () => {
-    const { companyId } = useParams<{ companyId: string }>();
-    const { companies, activeCompany, setActiveCompanyID, clearActiveCompany } = useCompany();
+    const { configId } = useParams<{ configId: string }>();
+    const { companyConfigs, configsLoaded, activeCompany, activeConfigId, selectConfig, clearActiveCompany } = useCompany();
     const navigate = useNavigate();
     const location = useLocation();
     const [refresh, setRefresh] = useState(false);
+    const [connecting, setConnecting] = useState(false);
+
+    // Ref so the effect doesn't re-run when activeConfigId changes (e.g. on clearActiveCompany).
+    // The effect should only react to URL configId changes or config list loading.
+    const activeConfigIdRef = useRef(activeConfigId);
+    useEffect(() => { activeConfigIdRef.current = activeConfigId; });
 
     useEffect(() => {
-        if (companyId && companyId !== activeCompany?.id?.toString()) {
-            const found = companies.find(c => c.id?.toString() === companyId);
-            if (found) setActiveCompanyID(found.id);
-            else navigate("/", { replace: true });
+        if (!configsLoaded || !configId) return;
+        if (configId === activeConfigIdRef.current) return;
+
+        const config = companyConfigs.find(c => c.id === configId);
+        if (!config) {
+            navigate("/", { replace: true });
+            return;
         }
-    }, [companyId, companies]);
+
+        let cancelled = false;
+        setConnecting(true);
+        selectConfig(config)
+            .catch(() => { if (!cancelled) navigate("/", { replace: true }); })
+            .finally(() => { if (!cancelled) setConnecting(false); });
+
+        return () => { cancelled = true; };
+    // activeConfigId intentionally NOT in deps — prevents race on clearActiveCompany + navigate("/")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [configId, configsLoaded, companyConfigs]);
+
+    if (connecting || !configsLoaded) {
+        return (
+            <Stack height="100%" alignItems="center" justifyContent="center">
+                <CircularProgress />
+            </Stack>
+        );
+    }
 
     if (!activeCompany) return null;
 
-    const base = `/${companyId}`;
+    const base = `/${configId}`;
     const isHome = location.pathname === base || location.pathname === `${base}/`;
 
     return (

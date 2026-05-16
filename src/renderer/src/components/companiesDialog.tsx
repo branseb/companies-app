@@ -1,24 +1,43 @@
 import { Close, Delete, Edit } from "@mui/icons-material";
-import { Box, Button, Dialog, DialogContent, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, type DialogProps } from "@mui/material";
+import {
+    Box, Button, Dialog, DialogContent, DialogTitle, IconButton,
+    Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, type DialogProps
+} from "@mui/material";
 import { Fragment, useState } from "react";
 import { useCompany } from "../context/company";
-import { AddCompanyDialog } from "./addCompanyDialog";
-import { Company } from "../models/company";
+import { AddCompanyConfigDialog } from "./AddCompanyConfigDialog";
+import { CompanyConfig } from "../models/companyConfig";
 
 export const CompaniesDialog = (props: DialogProps) => {
     const { open, onClose } = props;
-    const { companies, activeCompany, setActiveCompanyID, addCompany } = useCompany();
-    const [companyDialog, setCompanyDialog] = useState<{ open: boolean, company?: Company }>({ open: false, company: undefined });
+    const { companyConfigs, activeConfigId, addCompanyConfig, updateCompanyConfig, deleteCompanyConfig } = useCompany();
+    const [editTarget, setEditTarget] = useState<CompanyConfig | undefined>();
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    const openAdd = () => { setEditTarget(undefined); setDialogOpen(true); };
+    const openEdit = (c: CompanyConfig) => { setEditTarget(c); setDialogOpen(true); };
+    const closeDialog = () => setDialogOpen(false);
+
+    const handleConfirm = async (data: { name: string; connectionString: string }) => {
+        if (editTarget) {
+            await updateCompanyConfig({ ...editTarget, ...data });
+        } else {
+            await addCompanyConfig(data);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Naozaj odstrániť toto pripojenie?")) return;
+        await deleteCompanyConfig(id);
+    };
 
     return (
         <Fragment>
             <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
                 <DialogTitle>
-                    <Stack justifyContent={'space-between'} direction={"row"} alignItems={'center'}>
-                        <Typography variant="h6">
-                            Správa firiem
-                        </Typography>
-                        <IconButton onClick={() => onClose?.({}, 'backdropClick')}>
+                    <Stack justifyContent="space-between" direction="row" alignItems="center">
+                        <Typography variant="h6">Správa pripojení k databázam</Typography>
+                        <IconButton onClick={() => onClose?.({}, "backdropClick")}>
                             <Close />
                         </IconButton>
                     </Stack>
@@ -28,95 +47,63 @@ export const CompaniesDialog = (props: DialogProps) => {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Názov</TableCell>
-                                <TableCell>IČO</TableCell>
-                                <TableCell>DIČ</TableCell>
-                                <TableCell>Email</TableCell>
+                                <TableCell>Názov firmy</TableCell>
+                                <TableCell>Connection string</TableCell>
                                 <TableCell align="right">Akcie</TableCell>
                             </TableRow>
                         </TableHead>
-
                         <TableBody>
-                            {companies.map((c) => (
-                                <TableRow key={c.id}
-                                    onClick={() => setActiveCompanyID(c.id)}
+                            {companyConfigs.map((c) => (
+                                <TableRow
+                                    key={c.id}
                                     sx={{
-                                        cursor: "pointer",
-
-                                        backgroundColor:
-                                            activeCompany?.id === c.id
-                                                ? "rgba(25, 118, 210, 0.25)"
-                                                : "transparent",
-
-                                        "&:hover": {
-                                            backgroundColor: activeCompany?.id === c.id
-                                                ? "rgba(25, 118, 210, 0.35)"
-                                                : "rgba(0,0,0,0.04)"
-                                        },
-
-                                        borderLeft: activeCompany?.id === c.id
-                                            ? "4px solid #1976d2"
-                                            : "4px solid transparent",
-                                    }}>
+                                        backgroundColor: activeConfigId === c.id ? "rgba(25,118,210,0.12)" : "transparent",
+                                        borderLeft: activeConfigId === c.id ? "4px solid #1976d2" : "4px solid transparent",
+                                    }}
+                                >
                                     <TableCell>{c.name}</TableCell>
-
-                                    <TableCell>{c.ico}</TableCell>
-
-                                    <TableCell>{c.dic}</TableCell>
-
-                                    <TableCell>{c.email}</TableCell>
-
-                                    <TableCell align="right" onClick={(e) => e.stopPropagation()}>
+                                    <TableCell
+                                        title={c.connectionString}
+                                        sx={{ fontFamily: "monospace", fontSize: 12, maxWidth: 340, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                    >
+                                        {c.connectionString}
+                                    </TableCell>
+                                    <TableCell align="right">
                                         <Stack direction="row" spacing={1} justifyContent="flex-end">
-
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => {
-                                                    setCompanyDialog({ open: true, company: c })
-                                                }}
-                                            >
+                                            <IconButton size="small" onClick={() => openEdit(c)}>
                                                 <Edit fontSize="small" />
                                             </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => {
-                                                    console.log("delete", c.id);
-                                                }}
-                                            >
+                                            <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}>
                                                 <Delete fontSize="small" />
                                             </IconButton>
-
                                         </Stack>
                                     </TableCell>
                                 </TableRow>
                             ))}
+                            {companyConfigs.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={3} align="center">
+                                        <Typography color="text.secondary" py={2}>Žiadne pripojenia</Typography>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
 
-                    <Box sx={{ mt: 2, gap: 2, display: "flex", justifyContent: "flex-end" }}>
-                        <Button variant="text" onClick={() => setCompanyDialog({ open: true, company: undefined })}>
+                    <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
+                        <Button variant="text" onClick={openAdd}>
                             + Pridať firmu
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={async () => {
-                                //await window.api.company.save(companies);
-                                // setCompanies(editCompanies);
-                                onClose?.({}, 'backdropClick');
-                            }}
-                        >
-                            Uložiť zmeny
                         </Button>
                     </Box>
                 </DialogContent>
             </Dialog>
-            <AddCompanyDialog
-                open={companyDialog.open}
-                company={companyDialog.company}
-                onClose={() => setCompanyDialog({ open: false, company: undefined })}
-                onConfirm={company => company.id ? console.log('edit company', company) : addCompany(company)}
+
+            <AddCompanyConfigDialog
+                open={dialogOpen}
+                config={editTarget}
+                onClose={closeDialog}
+                onConfirm={handleConfirm}
             />
         </Fragment>
-    )
-}
+    );
+};

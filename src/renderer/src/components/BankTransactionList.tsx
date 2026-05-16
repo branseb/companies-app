@@ -24,7 +24,7 @@ const fmtDate = (d: string) => {
 import type { ImportRow, InvoiceOption, MatchSuggestion, Tx } from "../models/bankTransaction";
 
 export const BankTransactionList: React.FC = () => {
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const navigate = useNavigate();
     const [transactions, setTransactions] = useState<Tx[]>([]);
     const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
@@ -267,7 +267,7 @@ export const BankTransactionList: React.FC = () => {
                                                         size="small"
                                                         color={linkedInv.type === "issued" ? "primary" : "warning"}
                                                         variant="outlined"
-                                                        onClick={() => navigate(`/${activeCompany!.id}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
+                                                        onClick={() => navigate(`/${activeConfigId}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
                                                         title={`${linkedInv.partyName} | ${fmt(linkedInv.grossTotal, linkedInv.currency)}`}
                                                         sx={{ cursor: "pointer" }}
                                                     />

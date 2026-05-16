@@ -1,14 +1,15 @@
 import { app, ipcMain, shell } from "electron";
-import { DataSource } from "typeorm";
 import { buildPdfInvoice, generatePdfBase64 } from "../pdf/generate.js";
 import fs from "fs";
 import path from "path";
 import { Invoice } from "../database/entities/invoice.js";
 import { BankAccount } from "../database/entities/bankAccount.js";
 import { Company } from "../database/entities/company.js";
+import { dbManager } from "../database/database-manager.js";
 
-export const registerPdfIpc = (db: DataSource) => {
+export const registerPdfIpc = () => {
     ipcMain.handle("pdf:download", async (_event, invoiceId: number) => {
+        const db = dbManager.current;
         const raw = await db.getRepository(Invoice).findOneOrFail({
             where: { id: invoiceId },
         });

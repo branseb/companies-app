@@ -1,18 +1,18 @@
 import { ipcMain } from "electron";
-import { DataSource } from "typeorm";
 import { BankTransaction } from "../database/entities/bankTransaction";
 import { Invoice } from "../database/entities/invoice";
 import { Company } from "../database/entities/company";
 import { CashEntry } from "../database/entities/cashEntry";
+import { dbManager } from "../database/database-manager";
 
-export const registerBankTransactionIpc = (db: DataSource) => {
+export const registerBankTransactionIpc = () => {
 
     ipcMain.handle("bankTransaction:create", async (_event, data: Partial<BankTransaction> & { companyId: number; bankAccountId?: number }) => {
-        const repo = db.getRepository(BankTransaction);
+        const db = dbManager.current;
         const company = await db.getRepository(Company).findOneBy({ id: data.companyId });
         if (!company) throw new Error("Company not found");
 
-        const tx = repo.create({
+        const tx = db.getRepository(BankTransaction).create({
             date: data.date,
             amount: data.amount,
             currency: data.currency,
@@ -27,14 +27,15 @@ export const registerBankTransactionIpc = (db: DataSource) => {
             company,
         });
 
-        return await repo.save(tx);
+        return await db.getRepository(BankTransaction).save(tx);
     });
 
     ipcMain.handle("bankTransaction:bulk-import", async (_event, rows: Array<Partial<BankTransaction>>, companyId: number, bankAccountId?: number) => {
-        const repo = db.getRepository(BankTransaction);
+        const db = dbManager.current;
         const company = await db.getRepository(Company).findOneBy({ id: companyId });
         if (!company) throw new Error("Firma nenájdená");
 
+        const repo = db.getRepository(BankTransaction);
         const existing = await repo.find({
             where: { company: { id: companyId } },
             select: ["date", "amount", "variableSymbol", "counterpartyIban"],
@@ -53,17 +54,18 @@ export const registerBankTransactionIpc = (db: DataSource) => {
     });
 
     ipcMain.handle("bankTransaction:by-company", async (_event, companyId: number) => {
-        return db.getRepository(BankTransaction).find({
+        return dbManager.current.getRepository(BankTransaction).find({
             where: { company: { id: companyId } },
             order: { date: "DESC", id: "DESC" },
         });
     });
 
     ipcMain.handle("bankTransaction:update-note", async (_event, id: number, note: string) => {
-        return db.getRepository(BankTransaction).update(id, { note: note || undefined });
+        return dbManager.current.getRepository(BankTransaction).update(id, { note: note || undefined });
     });
 
     ipcMain.handle("bankTransaction:link-invoice", async (_event, id: number, invoiceId: number | null) => {
+        const db = dbManager.current;
         const prev = await db.getRepository(BankTransaction).findOneBy({ id });
         await db.getRepository(BankTransaction).update(id, { linkedInvoiceId: invoiceId ?? (null as any) });
         if (invoiceId) {
@@ -74,6 +76,7 @@ export const registerBankTransactionIpc = (db: DataSource) => {
     });
 
     ipcMain.handle("bankTransaction:delete", async (_event, id: number) => {
+        const db = dbManager.current;
         const tx = await db.getRepository(BankTransaction).findOneBy({ id });
         if (tx?.linkedInvoiceId) await db.getRepository(Invoice).update(tx.linkedInvoiceId, { paid: false, paidDate: null as any });
         if (tx?.pairedCashEntryId) await db.getRepository(CashEntry).update(tx.pairedCashEntryId, { pairedBankTransactionId: null as any });

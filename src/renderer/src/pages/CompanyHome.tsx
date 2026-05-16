@@ -113,7 +113,7 @@ const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value, mono }) => (
 
 export const CompanyHome = () => {
     const navigate = useNavigate();
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const [stats, setStats] = useState<DashboardStats | null>(null);
 
     useEffect(() => {
@@ -337,7 +337,7 @@ export const CompanyHome = () => {
                     return (
                         <Grid key={tile.page} size={{ xs: 12, sm: 6, md: 4 }}>
                             <Box
-                                onClick={() => navigate(`/${activeCompany!.id}/${tile.page}`)}
+                                onClick={() => navigate(`/${activeConfigId}/${tile.page}`)}
                                 sx={{
                                     bgcolor: tile.color,
                                     color: "white",

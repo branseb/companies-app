@@ -29,7 +29,7 @@ export const EditCompanyPage = ({ onSaved }: Props) => {
                     <TextField fullWidth label="Názov firmy" value={form.name} onChange={e => set("name", e.target.value)} />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField fullWidth label="IČO" disabled value={form.ico} />
+                    <TextField fullWidth label="IČO" disabled={!!form.ico} value={form.ico} onChange={e => set("ico", e.target.value)} />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField fullWidth label="DIČ" value={form.dic ?? ""} onChange={e => set("dic", e.target.value)} />
