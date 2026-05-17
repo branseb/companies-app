@@ -5,16 +5,15 @@ declare global {
 	interface Window {
 		api: {
 			invoice: {
-				create: (data: any) => Promise<any>;
-				update: (id: number, data: any) => Promise<void>;
-				all: () => Promise<any[]>;
-				get: (id: string) => Promise<any>;
-				nextId: (supplierIco: string) => Promise<string>;
-				byCompany: (ico: string) => Promise<any[]>;
-				byCustomer: (ico: string) => Promise<any[]>;
-				knownParties: () => Promise<any[]>;
-				markPaid: (id: number, paid: boolean) => Promise<void>;
-				delete: (id: number) => Promise<void>;
+				create: (configId: string, data: any) => Promise<any>;
+				update: (configId: string, id: number, data: any) => Promise<void>;
+				get: (configId: string, id: string) => Promise<any>;
+				nextId: (configId: string, supplierIco: string) => Promise<string>;
+				byCompany: (configId: string, ico: string) => Promise<any[]>;
+				byCustomer: (configId: string, ico: string) => Promise<any[]>;
+				knownParties: (configId: string) => Promise<any[]>;
+				markPaid: (configId: string, id: number, paid: boolean) => Promise<void>;
+				delete: (configId: string, id: number) => Promise<void>;
 			};
 
 			db: {
@@ -27,40 +26,49 @@ declare global {
 			};
 
 			company: {
-				get: () => Promise<Company>;
-				create: (data: Company) => Promise<Company>;
-				update: (data: Company) => Promise<Company>;
+				get: (configId: string) => Promise<Company>;
+				create: (configId: string, data: Company) => Promise<Company>;
+				update: (configId: string, data: Company) => Promise<Company>;
 			};
 
 			bankAccount: {
-				byCompany: (companyId: number) => Promise<any[]>;
-				create: (data: any) => Promise<any>;
-				update: (data: { id: number; name: string; note?: string }) => Promise<void>;
-				delete: (id: number) => Promise<void>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				create: (configId: string, data: any) => Promise<any>;
+				update: (configId: string, data: { id: number; name: string; note?: string }) => Promise<void>;
+				delete: (configId: string, id: number) => Promise<void>;
 			};
+
 			bankTransaction: {
-				create: (data: any) => Promise<any>;
-				bulkImport: (rows: any[], companyId: number, bankAccountId?: number) => Promise<{ saved: number; skipped: number }>;
-				byCompany: (companyId: number) => Promise<any[]>;
-				updateNote: (id: number, note: string) => Promise<void>;
-				linkInvoice: (id: number, invoiceId: number | null) => Promise<void>;
-				delete: (id: number) => Promise<void>;
+				create: (configId: string, data: any) => Promise<any>;
+				bulkImport: (configId: string, rows: any[], companyId: number, bankAccountId?: number) => Promise<{ saved: number; skipped: number }>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				updateNote: (configId: string, id: number, note: string) => Promise<void>;
+				linkInvoice: (configId: string, id: number, invoiceId: number | null) => Promise<void>;
+				delete: (configId: string, id: number) => Promise<void>;
 			};
 
 			cashRegister: {
-				byCompany: (companyId: number) => Promise<any[]>;
-				create: (data: any) => Promise<any>;
-				update: (data: { id: number; name: string; note?: string }) => Promise<void>;
-				delete: (id: number) => Promise<void>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				create: (configId: string, data: any) => Promise<any>;
+				update: (configId: string, data: { id: number; name: string; note?: string }) => Promise<void>;
+				delete: (configId: string, id: number) => Promise<void>;
 			};
 
 			cashEntry: {
-				byCompany: (companyId: number) => Promise<any[]>;
-				create: (data: any) => Promise<any>;
-				update: (data: any) => Promise<void>;
-				linkInvoice: (id: number, invoiceId: number | null) => Promise<void>;
-				pairBankTransaction: (id: number, bankTransactionId: number | null) => Promise<void>;
-				delete: (id: number) => Promise<void>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				create: (configId: string, data: any) => Promise<any>;
+				update: (configId: string, data: any) => Promise<void>;
+				linkInvoice: (configId: string, id: number, invoiceId: number | null) => Promise<void>;
+				pairBankTransaction: (configId: string, id: number, bankTransactionId: number | null) => Promise<void>;
+				delete: (configId: string, id: number) => Promise<void>;
+			};
+
+			auditLog: {
+				byCompany: (configId: string, companyIco: string) => Promise<any[]>;
+			};
+
+			backup: {
+				export: (configId: string, companyId: number) => Promise<string>;
 			};
 		};
 		electron: {
@@ -71,7 +79,7 @@ declare global {
 				devtools: () => void;
 			};
 			pdf: {
-				download: (invoiceId: string) => Promise<string>;
+				download: (configId: string, invoiceId: string) => Promise<string>;
 				open: (filePath: string) => void;
 			};
 		};

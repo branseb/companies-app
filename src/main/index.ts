@@ -8,6 +8,8 @@ import { registerWindowIpc } from './ipc/window';
 import { registerBankTransactionIpc } from './ipc/bankTransactions';
 import { registerBankAccountIpc } from './ipc/bankAccounts';
 import { registerCashIpc } from './ipc/cash';
+import { registerAuditLogIpc } from './ipc/auditLog';
+import { registerBackupIpc } from './ipc/backup';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -38,12 +40,14 @@ app.whenReady().then(async () => {
   registerBankTransactionIpc();
   registerBankAccountIpc();
   registerCashIpc();
+  registerAuditLogIpc();
+  registerBackupIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });
 
 app.on('window-all-closed', async () => {
-  await dbManager.destroyAll();
+  await dbManager.destroyAllConnections();
   if (process.platform !== 'darwin') app.quit();
 });
 

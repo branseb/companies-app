@@ -11,7 +11,7 @@ import { InvoiceItemsEditor } from "./InvoiceItemsEditor";
 
 export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
 
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const [invoice, setInvoice] = useState<SimpleInvoice | null>(null);
     const [vatEnabled, setVatEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
 
     const fetchNextId = async (ico: string) => {
         try {
-            const res = await window.api.invoice.nextId(ico);
+            const res = await window.api.invoice.nextId(activeConfigId!, ico);
             setInvoice(prev => {
                 if (!prev) return prev;
 
@@ -124,7 +124,7 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
         setLoading(true);
         const enInvoice = mapToEN16931(invoice);
         try {
-            await window.api.invoice.create(enInvoice);
+            await window.api.invoice.create(activeConfigId!, enInvoice);
             onAdd();
             setSnackbar({ open: true, message: "Faktúra uložená", severity: "success" });
             await fetchNextId(activeCompany.ico);

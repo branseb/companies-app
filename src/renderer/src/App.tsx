@@ -1,7 +1,8 @@
-import { IconButton, Stack } from "@mui/material";
-import { Close, Minimize, Terminal } from "@mui/icons-material";
+import { IconButton, Stack, Tooltip } from "@mui/material";
+import { Close, DarkMode, LightMode, Minimize, Terminal } from "@mui/icons-material";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useCompany } from "./context/company";
+import { useThemeMode } from "./context/theme";
 import { SelectCompanyPage } from "./pages/SelectCompanyPage";
 import { CompanyDashboard } from "./pages/CompanyDashboard";
 
@@ -24,24 +25,33 @@ const App = () => {
 	);
 };
 
-const WindowBar = () => (
-	<Stack
-		sx={{ "-webkit-app-region": "drag", background: "silver", flexShrink: 0 }}
-		width="100%"
-		direction="row"
-		justifyContent="end"
-		alignItems="start"
-	>
-		<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.devtools()}>
-			<Terminal />
-		</IconButton>
-		<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.minimize()}>
-			<Minimize />
-		</IconButton>
-		<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.close()}>
-			<Close />
-		</IconButton>
-	</Stack>
-);
+const WindowBar = () => {
+	const { mode, toggleMode } = useThemeMode();
+
+	return (
+		<Stack
+			sx={{ "-webkit-app-region": "drag", background: mode === "dark" ? "#1e1e1e" : "silver", flexShrink: 0 }}
+			width="100%"
+			direction="row"
+			justifyContent="end"
+			alignItems="center"
+		>
+			<Tooltip title={mode === "dark" ? "Svetlý režim" : "Tmavý režim"}>
+				<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={toggleMode}>
+					{mode === "dark" ? <LightMode /> : <DarkMode />}
+				</IconButton>
+			</Tooltip>
+			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.devtools()}>
+				<Terminal />
+			</IconButton>
+			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.minimize()}>
+				<Minimize />
+			</IconButton>
+			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.close()}>
+				<Close />
+			</IconButton>
+		</Stack>
+	);
+};
 
 export default App;

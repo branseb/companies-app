@@ -61,13 +61,13 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateCompany = async (company: Company): Promise<Company> => {
-        const saved = await window.api.company.update(company);
+        const saved = await window.api.company.update(activeConfigId!, company);
         setActiveCompany(saved);
         return saved;
     };
 
     const createCompany = async (company: Company): Promise<Company> => {
-        const saved = await window.api.company.create(company);
+        const saved = await window.api.company.create(activeConfigId!, company);
         setActiveCompany(saved);
         return saved;
     };

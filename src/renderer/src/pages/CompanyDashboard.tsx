@@ -9,6 +9,7 @@ import { BankTransactionList } from "../components/BankTransactionList";
 import { CashRegisterList } from "../components/CashRegisterList";
 import { CompanyHome } from "./CompanyHome";
 import { EditCompanyPage } from "./EditCompanyPage";
+import { AuditLogPage } from "./AuditLogPage";
 
 export const CompanyDashboard = () => {
     const { configId } = useParams<{ configId: string }>();
@@ -92,6 +93,7 @@ export const CompanyDashboard = () => {
                     <Route path="bank" element={<BankTransactionList />} />
                     <Route path="cash" element={<CashRegisterList />} />
                     <Route path="edit" element={<EditCompanyPage onSaved={() => navigate(base)} />} />
+                    <Route path="audit" element={<AuditLogPage />} />
                     <Route path="*" element={<Navigate to={base} replace />} />
                 </Routes>
             </Container>

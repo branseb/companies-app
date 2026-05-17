@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Autocomplete, TextField, Typography, Box } from "@mui/material";
 import type { Party } from "../models/SimpleInvoice";
+import { useCompany } from "../context/company";
 
 interface Props {
     value: Party;
@@ -9,11 +10,13 @@ interface Props {
 }
 
 export const PartyAutocomplete: React.FC<Props> = ({ value, onChange, label = "IČO" }) => {
+    const { activeConfigId } = useCompany();
     const [options, setOptions] = useState<Party[]>([]);
 
     useEffect(() => {
-        window.api.invoice.knownParties().then(setOptions);
-    }, []);
+        if (!activeConfigId) return;
+        window.api.invoice.knownParties(activeConfigId).then(setOptions);
+    }, [activeConfigId]);
 
     const selected = options.find(o => o.ico === value.ico) ?? null;
 

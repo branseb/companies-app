@@ -1,16 +1,17 @@
-import { ipcMain } from "electron";
 import { BankTransaction } from "../database/entities/bankTransaction";
 import { Invoice } from "../database/entities/invoice";
 import { Company } from "../database/entities/company";
 import { CashEntry } from "../database/entities/cashEntry";
+import { handle } from "./ipcHandle";
+import { logAction } from "./auditLog";
 import { dbManager } from "../database/database-manager";
 
 export const registerBankTransactionIpc = () => {
 
-    ipcMain.handle("bankTransaction:create", async (_event, data: Partial<BankTransaction> & { companyId: number; bankAccountId?: number }) => {
-        const db = dbManager.current;
+    handle("bankTransaction:create", async (configId: string, data: Partial<BankTransaction> & { companyId: number; bankAccountId?: number }) => {
+        const db = await dbManager.getDB(configId);
         const company = await db.getRepository(Company).findOneBy({ id: data.companyId });
-        if (!company) throw new Error("Company not found");
+        if (!company) throw new Error("Firma nenájdená");
 
         const tx = db.getRepository(BankTransaction).create({
             date: data.date,
@@ -27,11 +28,13 @@ export const registerBankTransactionIpc = () => {
             company,
         });
 
-        return await db.getRepository(BankTransaction).save(tx);
+        const saved = await db.getRepository(BankTransaction).save(tx);
+        await logAction(db, company.ico, "create", "bankTransaction", saved.id, { amount: saved.amount, date: saved.date });
+        return saved;
     });
 
-    ipcMain.handle("bankTransaction:bulk-import", async (_event, rows: Array<Partial<BankTransaction>>, companyId: number, bankAccountId?: number) => {
-        const db = dbManager.current;
+    handle("bankTransaction:bulk-import", async (configId: string, rows: Array<Partial<BankTransaction>>, companyId: number, bankAccountId?: number) => {
+        const db = await dbManager.getDB(configId);
         const company = await db.getRepository(Company).findOneBy({ id: companyId });
         if (!company) throw new Error("Firma nenájdená");
 
@@ -50,22 +53,25 @@ export const registerBankTransactionIpc = () => {
 
         const skipped = rows.length - entities.length;
         if (entities.length) await repo.save(entities);
+        await logAction(db, company.ico, "bulk-import", "bankTransaction", undefined, { saved: entities.length, skipped });
         return { saved: entities.length, skipped };
     });
 
-    ipcMain.handle("bankTransaction:by-company", async (_event, companyId: number) => {
-        return dbManager.current.getRepository(BankTransaction).find({
+    handle("bankTransaction:by-company", async (configId: string, companyId: number) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(BankTransaction).find({
             where: { company: { id: companyId } },
             order: { date: "DESC", id: "DESC" },
         });
     });
 
-    ipcMain.handle("bankTransaction:update-note", async (_event, id: number, note: string) => {
-        return dbManager.current.getRepository(BankTransaction).update(id, { note: note || undefined });
+    handle("bankTransaction:update-note", async (configId: string, id: number, note: string) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(BankTransaction).update(id, { note: note || undefined });
     });
 
-    ipcMain.handle("bankTransaction:link-invoice", async (_event, id: number, invoiceId: number | null) => {
-        const db = dbManager.current;
+    handle("bankTransaction:link-invoice", async (configId: string, id: number, invoiceId: number | null) => {
+        const db = await dbManager.getDB(configId);
         const prev = await db.getRepository(BankTransaction).findOneBy({ id });
         await db.getRepository(BankTransaction).update(id, { linkedInvoiceId: invoiceId ?? (null as any) });
         if (invoiceId) {
@@ -75,11 +81,13 @@ export const registerBankTransactionIpc = () => {
         }
     });
 
-    ipcMain.handle("bankTransaction:delete", async (_event, id: number) => {
-        const db = dbManager.current;
+    handle("bankTransaction:delete", async (configId: string, id: number) => {
+        const db = await dbManager.getDB(configId);
         const tx = await db.getRepository(BankTransaction).findOneBy({ id });
         if (tx?.linkedInvoiceId) await db.getRepository(Invoice).update(tx.linkedInvoiceId, { paid: false, paidDate: null as any });
         if (tx?.pairedCashEntryId) await db.getRepository(CashEntry).update(tx.pairedCashEntryId, { pairedBankTransactionId: null as any });
-        return db.getRepository(BankTransaction).delete(id);
+        const result = await db.getRepository(BankTransaction).delete(id);
+        await logAction(db, "", "delete", "bankTransaction", id, {});
+        return result;
     });
 };

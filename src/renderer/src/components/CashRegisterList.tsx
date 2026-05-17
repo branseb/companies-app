@@ -34,7 +34,7 @@ interface EntryFormProps {
 }
 
 const EntryForm: React.FC<EntryFormProps> = ({ registers, defaultRegisterId, defaultCurrency, onAdd }) => {
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const [date, setDate] = useState(today());
     const [amount, setAmount] = useState("");
     const [type, setType] = useState<"income" | "expense">("income");
@@ -50,7 +50,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ registers, defaultRegisterId, def
         const num = parseFloat(amount.replace(",", "."));
         if (!date || isNaN(num) || num <= 0 || !registerId) return;
         setSaving(true);
-        await window.api.cashEntry.create({
+        await window.api.cashEntry.create(activeConfigId!, {
             companyId: activeCompany!.id!,
             date,
             amount: type === "income" ? num : -num,
@@ -96,6 +96,7 @@ interface ManageDialogProps {
 }
 
 const ManageDialog: React.FC<ManageDialogProps> = ({ open, registers, companyId, onClose, onChange }) => {
+    const { activeConfigId } = useCompany();
     const [name, setName] = useState("");
     const [currency, setCurrency] = useState("EUR");
     const [editId, setEditId] = useState<number | null>(null);
@@ -103,19 +104,19 @@ const ManageDialog: React.FC<ManageDialogProps> = ({ open, registers, companyId,
 
     const handleCreate = async () => {
         if (!name.trim()) return;
-        await window.api.cashRegister.create({ name: name.trim(), currency, companyId });
+        await window.api.cashRegister.create(activeConfigId!, { name: name.trim(), currency, companyId });
         setName("");
         onChange();
     };
 
     const handleUpdate = async (id: number) => {
-        await window.api.cashRegister.update({ id, name: editName.trim() });
+        await window.api.cashRegister.update(activeConfigId!, { id, name: editName.trim() });
         setEditId(null);
         onChange();
     };
 
     const handleDelete = async (id: number) => {
-        await window.api.cashRegister.delete(id);
+        await window.api.cashRegister.delete(activeConfigId!, id);
         onChange();
     };
 
@@ -172,6 +173,7 @@ interface EditEntryDialogProps {
 }
 
 const EditEntryDialog: React.FC<EditEntryDialogProps> = ({ entry, onClose, onSaved }) => {
+    const { activeConfigId } = useCompany();
     const [date, setDate] = useState("");
     const [entryType, setEntryType] = useState<"income" | "expense">("income");
     const [amount, setAmount] = useState("");
@@ -193,7 +195,7 @@ const EditEntryDialog: React.FC<EditEntryDialogProps> = ({ entry, onClose, onSav
         const num = parseFloat(amount.replace(",", "."));
         if (!date || isNaN(num) || num <= 0) return;
         setSaving(true);
-        await window.api.cashEntry.update({
+        await window.api.cashEntry.update(activeConfigId!, {
             id: entry.id,
             date,
             amount: entryType === "income" ? num : -num,
@@ -265,19 +267,19 @@ export const CashRegisterList: React.FC = () => {
 
     const load = useCallback(async () => {
         if (!activeCompany?.id) return;
-        setEntries(await window.api.cashEntry.byCompany(activeCompany.id));
+        setEntries(await window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id));
     }, [activeCompany?.id]);
 
     const loadRegisters = useCallback(async () => {
         if (!activeCompany?.id) return;
-        setRegisters(await window.api.cashRegister.byCompany(activeCompany.id));
+        setRegisters(await window.api.cashRegister.byCompany(activeConfigId!, activeCompany.id));
     }, [activeCompany?.id]);
 
     const loadInvoices = useCallback(async () => {
         if (!activeCompany) return;
         const [issued, received] = await Promise.all([
-            window.api.invoice.byCompany(activeCompany.ico),
-            window.api.invoice.byCustomer(activeCompany.ico),
+            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
+            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
         ]);
         setInvoices([
             ...issued.map((i: any) => toInvoiceOption(i, "issued")),
@@ -287,36 +289,36 @@ export const CashRegisterList: React.FC = () => {
 
     const loadBankTransactions = useCallback(async () => {
         if (!activeCompany?.id) return;
-        setBankTransactions(await window.api.bankTransaction.byCompany(activeCompany.id));
+        setBankTransactions(await window.api.bankTransaction.byCompany(activeConfigId!, activeCompany.id));
     }, [activeCompany?.id]);
 
     useEffect(() => { load(); loadRegisters(); loadInvoices(); loadBankTransactions(); }, [load, loadRegisters, loadInvoices, loadBankTransactions]);
 
     const handleDelete = async (id: number) => {
-        await window.api.cashEntry.delete(id);
+        await window.api.cashEntry.delete(activeConfigId!, id);
         load();
     };
 
     const handleLink = async (entryId: number, invoiceId: number) => {
-        await window.api.cashEntry.linkInvoice(entryId, invoiceId);
+        await window.api.cashEntry.linkInvoice(activeConfigId!, entryId, invoiceId);
         setEntries(prev => prev.map(e => e.id === entryId ? { ...e, linkedInvoiceId: invoiceId } : e));
         setLinkTarget(null);
     };
 
     const handleUnlink = async (entryId: number) => {
-        await window.api.cashEntry.linkInvoice(entryId, null);
+        await window.api.cashEntry.linkInvoice(activeConfigId!, entryId, null);
         setEntries(prev => prev.map(e => e.id === entryId ? { ...e, linkedInvoiceId: undefined } : e));
     };
 
     const handlePair = async (cashEntryId: number, bankTxId: number) => {
-        await window.api.cashEntry.pairBankTransaction(cashEntryId, bankTxId);
+        await window.api.cashEntry.pairBankTransaction(activeConfigId!, cashEntryId, bankTxId);
         setEntries(prev => prev.map(e => e.id === cashEntryId ? { ...e, pairedBankTransactionId: bankTxId } : e));
         setBankTransactions(prev => prev.map(t => t.id === bankTxId ? { ...t, pairedCashEntryId: cashEntryId } : t));
         setPairTarget(null);
     };
 
     const handleUnpair = async (cashEntryId: number, bankTxId: number) => {
-        await window.api.cashEntry.pairBankTransaction(cashEntryId, null);
+        await window.api.cashEntry.pairBankTransaction(activeConfigId!, cashEntryId, null);
         setEntries(prev => prev.map(e => e.id === cashEntryId ? { ...e, pairedBankTransactionId: undefined } : e));
         setBankTransactions(prev => prev.map(t => t.id === bankTxId ? { ...t, pairedCashEntryId: undefined } : t));
     };
@@ -570,7 +572,7 @@ export const CashRegisterList: React.FC = () => {
                 onClose={() => { setManageDialog(false); setManageOpenedForAdd(false); }}
                 onChange={async () => {
                     const wasEmpty = registers.length === 0;
-                    const regs: CashRegister[] = await window.api.cashRegister.byCompany(activeCompany!.id!);
+                    const regs: CashRegister[] = await window.api.cashRegister.byCompany(activeConfigId!, activeCompany!.id!);
                     setRegisters(regs);
                     if (manageOpenedForAdd && wasEmpty && regs.length > 0) {
                         setManageDialog(false);

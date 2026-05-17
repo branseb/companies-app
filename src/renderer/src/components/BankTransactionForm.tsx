@@ -45,7 +45,7 @@ interface Props {
 }
 
 export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], bankAccountId = null }) => {
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const [form, setForm] = useState<FormData>(empty());
     const [selectedAccountId, setSelectedAccountId] = useState<number | "">(bankAccountId ?? "");
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -65,7 +65,7 @@ export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], ban
         }
         const amount = form.type === "credit" ? raw : -raw;
         try {
-            await window.api.bankTransaction.create({
+            await window.api.bankTransaction.create(activeConfigId!, {
                 date: form.date,
                 amount,
                 currency: form.currency,

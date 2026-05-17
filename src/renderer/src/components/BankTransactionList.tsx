@@ -52,19 +52,19 @@ export const BankTransactionList: React.FC = () => {
 
     const load = useCallback(async () => {
         if (!activeCompany?.id) return;
-        setTransactions(await window.api.bankTransaction.byCompany(activeCompany.id));
+        setTransactions(await window.api.bankTransaction.byCompany(activeConfigId!, activeCompany.id));
     }, [activeCompany?.id]);
 
     const loadAccounts = useCallback(async () => {
         if (!activeCompany?.id) return;
-        setAccounts(await window.api.bankAccount.byCompany(activeCompany.id));
+        setAccounts(await window.api.bankAccount.byCompany(activeConfigId!, activeCompany.id));
     }, [activeCompany?.id]);
 
     const loadInvoices = useCallback(async () => {
         if (!activeCompany) return;
         const [issued, received] = await Promise.all([
-            window.api.invoice.byCompany(activeCompany.ico),
-            window.api.invoice.byCustomer(activeCompany.ico),
+            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
+            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
         ]);
         setInvoices([...issued.map((i: any) => toInvoiceOption(i, "issued")), ...received.map((i: any) => toInvoiceOption(i, "received"))]);
     }, [activeCompany]);
@@ -72,8 +72,8 @@ export const BankTransactionList: React.FC = () => {
     const loadCash = useCallback(async () => {
         if (!activeCompany?.id) return;
         const [entries, regs] = await Promise.all([
-            window.api.cashEntry.byCompany(activeCompany.id),
-            window.api.cashRegister.byCompany(activeCompany.id),
+            window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id),
+            window.api.cashRegister.byCompany(activeConfigId!, activeCompany.id),
         ]);
         setCashEntries(entries);
         setCashRegisters(regs);
@@ -85,7 +85,7 @@ export const BankTransactionList: React.FC = () => {
         setSnackbar({ open: true, message, severity });
 
     const handleDelete = async (id: number) => {
-        await window.api.bankTransaction.delete(id);
+        await window.api.bankTransaction.delete(activeConfigId!, id);
         load();
     };
 
@@ -111,7 +111,7 @@ export const BankTransactionList: React.FC = () => {
     const handleImport = async (rows: ImportRow[], bankAccountId?: number) => {
         if (!activeCompany?.id || !rows.length) { showSnack("Žiadne platné riadky na import", "error"); return; }
         try {
-            await window.api.bankTransaction.bulkImport(rows, activeCompany.id, bankAccountId ?? activeAccountId ?? undefined);
+            await window.api.bankTransaction.bulkImport(activeConfigId!, rows, activeCompany.id, bankAccountId ?? activeAccountId ?? undefined);
             setCsvDialog(d => ({ ...d, open: false }));
             setXmlDialog(d => ({ ...d, open: false }));
             load();
@@ -120,18 +120,18 @@ export const BankTransactionList: React.FC = () => {
     };
 
     const handleLink = async (txId: number, invoiceId: number) => {
-        await window.api.bankTransaction.linkInvoice(txId, invoiceId);
+        await window.api.bankTransaction.linkInvoice(activeConfigId!, txId, invoiceId);
         setTransactions(prev => prev.map(t => t.id === txId ? { ...t, linkedInvoiceId: invoiceId } : t));
         setLinkTarget(null);
     };
 
     const handleUnlink = async (txId: number) => {
-        await window.api.bankTransaction.linkInvoice(txId, null);
+        await window.api.bankTransaction.linkInvoice(activeConfigId!, txId, null);
         setTransactions(prev => prev.map(t => t.id === txId ? { ...t, linkedInvoiceId: undefined } : t));
     };
 
     const handleAutoApply = async (selected: MatchSuggestion[]) => {
-        await Promise.all(selected.map(s => window.api.bankTransaction.linkInvoice(s.tx.id, s.invoice.id)));
+        await Promise.all(selected.map(s => window.api.bankTransaction.linkInvoice(activeConfigId!, s.tx.id, s.invoice.id)));
         setTransactions(prev => prev.map(t => {
             const m = selected.find(s => s.tx.id === t.id);
             return m ? { ...t, linkedInvoiceId: m.invoice.id } : t;
@@ -141,7 +141,7 @@ export const BankTransactionList: React.FC = () => {
 
     const saveNote = async () => {
         if (!noteTarget) return;
-        await window.api.bankTransaction.updateNote(noteTarget.id, noteTarget.note);
+        await window.api.bankTransaction.updateNote(activeConfigId!, noteTarget.id, noteTarget.note);
         setTransactions(prev => prev.map(t => t.id === noteTarget.id ? { ...t, note: noteTarget.note || undefined } : t));
         setNoteAnchor(null);
     };
@@ -226,7 +226,7 @@ export const BankTransactionList: React.FC = () => {
                 <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                         <TableHead>
-                            <TableRow sx={{ bgcolor: "grey.50" }}>
+                            <TableRow sx={{ bgcolor: "action.hover" }}>
                                 <TableCell>Dátum</TableCell>
                                 <TableCell>Popis / Protistrana</TableCell>
                                 <TableCell>VS</TableCell>
@@ -302,7 +302,7 @@ export const BankTransactionList: React.FC = () => {
                                                         />
                                                         <Tooltip title="Odpojiť od pokladne">
                                                             <IconButton size="small" onClick={async () => {
-                                                                await window.api.cashEntry.pairBankTransaction(tx.pairedCashEntryId!, null);
+                                                                await window.api.cashEntry.pairBankTransaction(activeConfigId!, tx.pairedCashEntryId!, null);
                                                                 setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, pairedCashEntryId: undefined } : t));
                                                                 setCashEntries(prev => prev.map(e => e.id === tx.pairedCashEntryId ? { ...e, pairedBankTransactionId: undefined } : e));
                                                             }}>

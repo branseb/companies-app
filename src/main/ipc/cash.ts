@@ -1,48 +1,50 @@
-import { ipcMain } from "electron";
 import { CashRegister } from "../database/entities/cashRegister";
 import { CashEntry } from "../database/entities/cashEntry";
 import { Company } from "../database/entities/company";
 import { Invoice } from "../database/entities/invoice";
 import { BankTransaction } from "../database/entities/bankTransaction";
 import { dbManager } from "../database/database-manager";
+import { handle } from "./ipcHandle";
+import { logAction } from "./auditLog";
 
 export const registerCashIpc = () => {
-    // ── Cash registers ────────────────────────────────────────────────────────
 
-    ipcMain.handle("cashRegister:by-company", async (_event, companyId: number) => {
-        return dbManager.current.getRepository(CashRegister).find({
+    handle("cashRegister:by-company", async (configId: string, companyId: number) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(CashRegister).find({
             where: { company: { id: companyId } },
             order: { id: "ASC" },
         });
     });
 
-    ipcMain.handle("cashRegister:create", async (_event, data: { name: string; currency: string; companyId: number }) => {
-        const db = dbManager.current;
+    handle("cashRegister:create", async (configId: string, data: { name: string; currency: string; companyId: number }) => {
+        const db = await dbManager.getDB(configId);
         const company = await db.getRepository(Company).findOneBy({ id: data.companyId });
         if (!company) throw new Error("Firma nenájdená");
         const reg = db.getRepository(CashRegister).create({ name: data.name, currency: data.currency, company });
         return await db.getRepository(CashRegister).save(reg);
     });
 
-    ipcMain.handle("cashRegister:update", async (_event, data: { id: number; name: string; note?: string }) => {
-        return dbManager.current.getRepository(CashRegister).update(data.id, { name: data.name, note: data.note || undefined });
+    handle("cashRegister:update", async (configId: string, data: { id: number; name: string; note?: string }) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(CashRegister).update(data.id, { name: data.name, note: data.note || undefined });
     });
 
-    ipcMain.handle("cashRegister:delete", async (_event, id: number) => {
-        return dbManager.current.getRepository(CashRegister).delete(id);
+    handle("cashRegister:delete", async (configId: string, id: number) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(CashRegister).delete(id);
     });
 
-    // ── Cash entries ──────────────────────────────────────────────────────────
-
-    ipcMain.handle("cashEntry:by-company", async (_event, companyId: number) => {
-        return dbManager.current.getRepository(CashEntry).find({
+    handle("cashEntry:by-company", async (configId: string, companyId: number) => {
+        const db = await dbManager.getDB(configId);
+        return db.getRepository(CashEntry).find({
             where: { company: { id: companyId } },
             order: { date: "DESC", id: "DESC" },
         });
     });
 
-    ipcMain.handle("cashEntry:create", async (_event, data: Partial<CashEntry> & { companyId: number }) => {
-        const db = dbManager.current;
+    handle("cashEntry:create", async (configId: string, data: Partial<CashEntry> & { companyId: number }) => {
+        const db = await dbManager.getDB(configId);
         const company = await db.getRepository(Company).findOneBy({ id: data.companyId });
         if (!company) throw new Error("Firma nenájdená");
         const entry = db.getRepository(CashEntry).create({
@@ -55,16 +57,20 @@ export const registerCashIpc = () => {
             linkedInvoiceId: data.linkedInvoiceId ?? undefined,
             company,
         });
-        return await db.getRepository(CashEntry).save(entry);
+        const saved = await db.getRepository(CashEntry).save(entry);
+        await logAction(db, company.ico, "create", "cashEntry", saved.id, { amount: saved.amount, date: saved.date });
+        return saved;
     });
 
-    ipcMain.handle("cashEntry:update", async (_event, data: Partial<CashEntry> & { id: number }) => {
+    handle("cashEntry:update", async (configId: string, data: Partial<CashEntry> & { id: number }) => {
         const { id, ...rest } = data;
-        return dbManager.current.getRepository(CashEntry).update(id, rest);
+        const db = await dbManager.getDB(configId);
+
+        return db.getRepository(CashEntry).update(id, rest);
     });
 
-    ipcMain.handle("cashEntry:link-invoice", async (_event, id: number, invoiceId: number | null) => {
-        const db = dbManager.current;
+    handle("cashEntry:link-invoice", async (configId: string, id: number, invoiceId: number | null) => {
+        const db = await dbManager.getDB(configId);
         const prev = await db.getRepository(CashEntry).findOneBy({ id });
         await db.getRepository(CashEntry).update(id, { linkedInvoiceId: invoiceId ?? (null as any) });
         if (invoiceId) {
@@ -74,8 +80,8 @@ export const registerCashIpc = () => {
         }
     });
 
-    ipcMain.handle("cashEntry:pair-bank-transaction", async (_event, cashEntryId: number, bankTransactionId: number | null) => {
-        const db = dbManager.current;
+    handle("cashEntry:pair-bank-transaction", async (configId: string, cashEntryId: number, bankTransactionId: number | null) => {
+        const db = await dbManager.getDB(configId);
         const prev = await db.getRepository(CashEntry).findOneBy({ id: cashEntryId });
         if (prev?.pairedBankTransactionId) {
             await db.getRepository(BankTransaction).update(prev.pairedBankTransactionId, { pairedCashEntryId: null as any });
@@ -86,11 +92,13 @@ export const registerCashIpc = () => {
         }
     });
 
-    ipcMain.handle("cashEntry:delete", async (_event, id: number) => {
-        const db = dbManager.current;
+    handle("cashEntry:delete", async (configId: string, id: number) => {
+        const db = await dbManager.getDB(configId);
         const entry = await db.getRepository(CashEntry).findOneBy({ id });
         if (entry?.linkedInvoiceId) await db.getRepository(Invoice).update(entry.linkedInvoiceId, { paid: false, paidDate: null as any });
         if (entry?.pairedBankTransactionId) await db.getRepository(BankTransaction).update(entry.pairedBankTransactionId, { pairedCashEntryId: null as any });
-        return db.getRepository(CashEntry).delete(id);
+        const result = await db.getRepository(CashEntry).delete(id);
+        await logAction(db, "", "delete", "cashEntry", id, {});
+        return result;
     });
 };

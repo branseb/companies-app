@@ -1,12 +1,14 @@
-import { app, ipcMain } from "electron";
+import { app } from "electron";
 import fs from "fs";
 import path from "path";
 import { Company } from "../database/entities/company";
-import { CompanyConfig, dbManager } from "../database/database-manager";
+import { CompanyConfig, dbManager, testConnection } from "../database/database-manager";
+import { handle } from "./ipcHandle";
+import { ipcMain } from "electron";
 
 const configPath = () => path.join(app.getPath("userData"), "companies.json");
 
-const readConfigs = (): CompanyConfig[] => {
+export const readConfigs = (): CompanyConfig[] => {
     try {
         return JSON.parse(fs.readFileSync(configPath(), "utf-8"));
     } catch {
@@ -19,9 +21,9 @@ const writeConfigs = (configs: CompanyConfig[]) => {
 };
 
 export const registerCompanyConfigIpc = () => {
-    ipcMain.handle("db:list", () => readConfigs());
+    handle("db:list", async () => readConfigs());
 
-    ipcMain.handle("db:add", (_e, config: Omit<CompanyConfig, "id">) => {
+    handle("db:add", async (config: Omit<CompanyConfig, "id">) => {
         const configs = readConfigs();
         const newConfig: CompanyConfig = { ...config, id: Date.now().toString() };
         configs.push(newConfig);
@@ -29,22 +31,22 @@ export const registerCompanyConfigIpc = () => {
         return newConfig;
     });
 
-    ipcMain.handle("db:update", (_e, config: CompanyConfig) => {
+    handle("db:update", async (config: CompanyConfig) => {
         const configs = readConfigs();
         const idx = configs.findIndex(c => c.id === config.id);
-        if (idx === -1) throw new Error("Config not found");
+        if (idx === -1) throw new Error("Konfigurácia nenájdená");
         configs[idx] = config;
         writeConfigs(configs);
         return config;
     });
 
-    ipcMain.handle("db:delete", (_e, id: string) => {
+    handle("db:delete", async (id: string) => {
         writeConfigs(readConfigs().filter(c => c.id !== id));
     });
 
-    ipcMain.handle("db:connect", async (_e, config: CompanyConfig) => {
-        await dbManager.connect(config);
-        const repo = dbManager.current.getRepository(Company);
+    handle("db:connect", async (config: CompanyConfig) => {
+        const db = await dbManager.getDB(config.id);
+        const repo = db.getRepository(Company);
         let company = await repo.findOne({ where: {}, order: { id: "ASC" } });
         if (!company) {
             company = await repo.save({ name: config.name, ico: "" });
@@ -54,7 +56,7 @@ export const registerCompanyConfigIpc = () => {
 
     ipcMain.handle("db:test", async (_e, connectionString: string) => {
         try {
-            await dbManager.testConnection(connectionString);
+            await testConnection(connectionString);
             return { success: true };
         } catch (e: any) {
             return { success: false, error: e.message };

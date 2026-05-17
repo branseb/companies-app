@@ -4,13 +4,17 @@ import type { ImportRow, InvoiceOption, MatchSuggestion, Tx } from "../models/ba
 
 export function parseCSV(text: string): string[][] {
     const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim());
+    if (!lines.length) return [];
+    // detect delimiter from first line — prefer semicolon (SK bank exports) over comma
+    const firstLine = lines[0];
+    const delimiter = (firstLine.split(";").length >= firstLine.split(",").length) ? ";" : ",";
     return lines.map(line => {
         const cols: string[] = [];
         let cur = "";
         let inQuote = false;
         for (const ch of line) {
             if (ch === '"') { inQuote = !inQuote; continue; }
-            if ((ch === "," || ch === ";") && !inQuote) { cols.push(cur.trim()); cur = ""; continue; }
+            if (ch === delimiter && !inQuote) { cols.push(cur.trim()); cur = ""; continue; }
             cur += ch;
         }
         cols.push(cur.trim());
@@ -154,11 +158,33 @@ function parseTatraBanka(doc: Document): { rows: ImportRow[]; accountIban?: stri
 
 export function parseXML(text: string): { rows: ImportRow[]; format: string; accountIban?: string } | { error: string } {
     const doc = new DOMParser().parseFromString(text, "application/xml");
-    if (doc.querySelector("parsererror")) return { error: "Neplatný XML súbor" };
-    const camt = parseCamt053(doc); if (camt) return { rows: camt.rows, format: "CAMT.053 (ISO 20022)", accountIban: camt.accountIban };
-    const fio  = parseFio(doc);    if (fio)  return { rows: fio.rows,  format: "FIO banka",            accountIban: fio.accountIban };
-    const tb   = parseTatraBanka(doc); if (tb) return { rows: tb.rows, format: "Tatra banka / generický SK formát", accountIban: tb.accountIban };
-    return { error: "Formát XML nebol rozpoznaný. Podporované: CAMT.053, FIO banka, Tatra banka." };
+    if (doc.querySelector("parsererror")) {
+        return { error: "Neplatný XML súbor — súbor nie je validné XML." };
+    }
+
+    const rootTag = doc.documentElement?.localName ?? "(neznámy)";
+
+    const camt = parseCamt053(doc);
+    if (camt) {
+        if (!camt.rows.length) return { error: "CAMT.053 súbor neobsahuje žiadne transakcie (Ntry elementy sú prázdne alebo chýba suma)." };
+        return { rows: camt.rows, format: "CAMT.053 (ISO 20022)", accountIban: camt.accountIban };
+    }
+
+    const fio = parseFio(doc);
+    if (fio) {
+        if (!fio.rows.length) return { error: "FIO XML neobsahuje žiadne platné transakcie (chýba dátum alebo suma)." };
+        return { rows: fio.rows, format: "FIO banka", accountIban: fio.accountIban };
+    }
+
+    const tb = parseTatraBanka(doc);
+    if (tb) {
+        if (!tb.rows.length) return { error: "Tatra banka XML neobsahuje žiadne platné transakcie (chýba suma)." };
+        return { rows: tb.rows, format: "Tatra banka / generický SK formát", accountIban: tb.accountIban };
+    }
+
+    return {
+        error: `Formát XML nebol rozpoznaný (koreňový element: <${rootTag}>). Podporované formáty: CAMT.053 (ISO 20022), FIO banka, Tatra banka.`,
+    };
 }
 
 // ─── Matching ─────────────────────────────────────────────────────────────────

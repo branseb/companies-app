@@ -24,6 +24,7 @@ import {
     Typography,
 } from "@mui/material";
 import { Add, CheckCircle, DeleteOutline, Download, Edit, FileDownload, FileUpload, KeyboardArrowDown, KeyboardArrowUp, RadioButtonUnchecked } from "@mui/icons-material";
+import { CircularProgress } from "@mui/material";
 import { useCompany } from "../context/company";
 import { parseInvoiceXML } from "../utils/parseInvoiceXML";
 import type { EN16931Invoice } from "../models/EN16931Invoice";
@@ -53,12 +54,13 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
     const [statusFilter, setStatusFilter] = useState<"all" | "unpaid" | "overdue" | "paid">("all");
     const [yearFilter, setYearFilter] = useState<number | "all">(currentYear);
     const [loading, setLoading] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<InvoiceRow | null>(null);
     const [highlightId, setHighlightId] = useState<string | null>(null);
     const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
     const location = useLocation();
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
 
     const fileRef = useRef<HTMLInputElement>(null);
     const [xmlInvoice, setXmlInvoice] = useState<EN16931Invoice | null>(null);
@@ -95,18 +97,21 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
         if (!activeCompany) return;
         setLoading(true);
         const fetch = type === "issued"
-            ? window.api.invoice.byCompany(activeCompany.ico)
-            : window.api.invoice.byCustomer(activeCompany.ico);
+            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.ico)
+            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico);
         fetch.then((data: any[]) => setInvoices(data.map(i => ({ ...i, id: String(i.id) })))).finally(() => setLoading(false));
     };
 
     const handleDownload = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+        setPdfLoading(id);
         try {
-            const filePath = await window.electron.pdf.download(id);
+            const filePath = await window.electron.pdf.download(activeConfigId!, id);
             window.electron.pdf.open(filePath);
         } catch (err) {
-            console.error("PDF download failed:", err);
+            setSnackbar({ open: true, message: "Chyba pri generovaní PDF", severity: "error" });
+        } finally {
+            setPdfLoading(null);
         }
     };
 
@@ -136,7 +141,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        await window.api.invoice.delete(Number(id));
+        await window.api.invoice.delete(activeConfigId!, Number(id));
         setInvoices(prev => prev.filter(i => i.id !== id));
     };
 
@@ -144,7 +149,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
         e.stopPropagation();
         const newPaid = !inv.paid;
         const newPaidDate = newPaid ? new Date().toISOString().split("T")[0] : undefined;
-        await window.api.invoice.markPaid(Number(inv.id), newPaid);
+        await window.api.invoice.markPaid(activeConfigId!, Number(inv.id), newPaid);
         setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, paid: newPaid, paidDate: newPaidDate } : i));
     };
 
@@ -169,7 +174,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
     const handleImport = async (invoice: EN16931Invoice) => {
         try {
-            await window.api.invoice.create(invoice);
+            await window.api.invoice.create(activeConfigId!, invoice);
             setXmlDialog(false);
             onAdd?.();
             loadInvoices();
@@ -318,9 +323,13 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                                             <TableCell align="right" padding="none" sx={{ whiteSpace: "nowrap" }}>
                                                 {type === "issued" && (
                                                     <Tooltip title="Stiahnuť PDF">
-                                                        <IconButton size="small" onClick={e => handleDownload(inv.id, e)}>
-                                                            <Download fontSize="small" />
-                                                        </IconButton>
+                                                        <span>
+                                                            <IconButton size="small" onClick={e => handleDownload(inv.id, e)} disabled={pdfLoading === inv.id}>
+                                                                {pdfLoading === inv.id
+                                                                    ? <CircularProgress size={16} />
+                                                                    : <Download fontSize="small" />}
+                                                            </IconButton>
+                                                        </span>
                                                     </Tooltip>
                                                 )}
                                                 {type === "received" && (

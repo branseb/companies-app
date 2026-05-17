@@ -4,6 +4,7 @@ import { mapToEN16931 } from "../utils/mapToEN16931";
 import type { SimpleInvoice } from "../models/SimpleInvoice";
 import { CurrencySelect } from "./currencySelect";
 import { useCompany } from "../context/company";
+
 import { PartyAutocomplete } from "./PartyAutocomplete";
 import { FormSection } from "./FormSection";
 import { InvoiceItemsEditor } from "./InvoiceItemsEditor";
@@ -54,7 +55,7 @@ interface Props {
 }
 
 export const ReceivedInvoiceForm: React.FC<Props> = ({ onAdd, editInvoice }) => {
-    const { activeCompany } = useCompany();
+    const { activeCompany, activeConfigId } = useCompany();
     const [invoice, setInvoice] = useState<SimpleInvoice | null>(null);
     const [vatEnabled, setVatEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -126,10 +127,10 @@ export const ReceivedInvoiceForm: React.FC<Props> = ({ onAdd, editInvoice }) => 
         const enInvoice = mapToEN16931(invoice);
         try {
             if (editInvoice) {
-                await window.api.invoice.update(Number(editInvoice.id), enInvoice);
+                await window.api.invoice.update(activeConfigId!, Number(editInvoice.id), enInvoice);
                 setSnackbar({ open: true, message: "Faktúra aktualizovaná", severity: "success" });
             } else {
-                await window.api.invoice.create(enInvoice);
+                await window.api.invoice.create(activeConfigId!, enInvoice);
                 setSnackbar({ open: true, message: "Faktúra uložená", severity: "success" });
             }
             onAdd();

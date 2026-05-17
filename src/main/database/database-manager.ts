@@ -5,6 +5,8 @@ import { CashRegister } from "./entities/cashRegister";
 import { CashEntry } from "./entities/cashEntry";
 import { Company } from "./entities/company";
 import { Invoice } from "./entities/invoice";
+import { AuditLog } from "./entities/auditLog";
+import { readConfigs } from "../ipc/companyConfig";
 
 export type CompanyConfig = {
     id: string;
@@ -12,7 +14,7 @@ export type CompanyConfig = {
     connectionString: string;
 };
 
-const ENTITIES = [BankAccount, BankTransaction, CashRegister, CashEntry, Company, Invoice];
+const ENTITIES = [BankAccount, BankTransaction, CashRegister, CashEntry, Company, Invoice, AuditLog];
 
 const isMssql = (url: string) => url.startsWith("mssql://") || url.startsWith("sqlserver://");
 
@@ -27,66 +29,60 @@ const isAzureSql = (connectionString: string): boolean => {
 
 const normalizeMssqlUrl = (url: string) => url.replace(/^sqlserver:\/\//, "mssql://");
 
-const buildDataSource = (connectionString: string, extraEntities = ENTITIES): DataSource => {
+const buildDataSource = (connectionString: string): DataSource => {
     if (isMssql(connectionString)) {
         const azure = isAzureSql(connectionString);
         return new DataSource({
             type: "mssql",
             url: normalizeMssqlUrl(connectionString),
+            requestTimeout: 300000,
             options: {
-                encrypt: azure ? true : false,
-                trustServerCertificate: azure ? false : true,
+                encrypt: azure,
+                trustServerCertificate: !azure,
                 enableArithAbort: true,
+                connectTimeout: 60000,
             },
             synchronize: true,
             logging: false,
-            entities: extraEntities,
+            entities: ENTITIES,
         });
     }
     throw new Error("Nepodporovaný typ databázy. Použite mssql:// alebo sqlserver://");
 };
 
 class DatabaseManager {
-    private _current: DataSource | null = null;
     private _cache = new Map<string, DataSource>();
 
-    get current(): DataSource {
-        if (!this._current?.isInitialized) throw new Error("Žiadne aktívne pripojenie k databáze");
-        return this._current;
+    constructor() {
+
     }
 
-    get isConnected(): boolean {
-        return this._current?.isInitialized === true;
-    }
-
-    async connect(config: CompanyConfig): Promise<void> {
-        const cached = this._cache.get(config.id);
-        if (cached?.isInitialized) {
-            this._current = cached;
-            return;
-        }
-        const ds = buildDataSource(config.connectionString);
+    public getDB = async (id: string) => {
+        const cached = this._cache.get(id);
+        if (cached) return cached;
+        const config = readConfigs()
+        const connectionString = config.find(c => c.id === id)?.connectionString
+        const ds = buildDataSource(connectionString ?? '');
         await ds.initialize();
-        this._cache.set(config.id, ds);
-        this._current = ds;
+        this._cache.set(id, ds);
+        return ds;
     }
 
-    async testConnection(connectionString: string): Promise<void> {
-        const ds = buildDataSource(connectionString, []);
-        try {
-            await ds.initialize();
-        } finally {
-            if (ds.isInitialized) await ds.destroy().catch(() => {});
-        }
-    }
-
-    async destroyAll(): Promise<void> {
+    public destroyAllConnections = async () => {
         for (const ds of this._cache.values()) {
-            if (ds.isInitialized) await ds.destroy().catch(() => {});
+            if (ds.isInitialized) await ds.destroy().catch(() => { });
         }
         this._cache.clear();
-        this._current = null;
     }
 }
 
 export const dbManager = new DatabaseManager();
+
+export async function testConnection(connectionString: string): Promise<void> {
+    const ds = buildDataSource(connectionString);
+    try {
+        await ds.initialize();
+    } finally {
+        if (ds.isInitialized) await ds.destroy().catch(() => { });
+    }
+}

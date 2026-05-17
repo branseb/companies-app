@@ -1,18 +1,18 @@
-import { app, ipcMain, shell } from "electron";
+import { app, shell } from "electron";
+import { ipcMain } from "electron";
 import { buildPdfInvoice, generatePdfBase64 } from "../pdf/generate.js";
 import fs from "fs";
 import path from "path";
 import { Invoice } from "../database/entities/invoice.js";
 import { BankAccount } from "../database/entities/bankAccount.js";
 import { Company } from "../database/entities/company.js";
+import { handle } from "./ipcHandle";
 import { dbManager } from "../database/database-manager.js";
 
 export const registerPdfIpc = () => {
-    ipcMain.handle("pdf:download", async (_event, invoiceId: number) => {
-        const db = dbManager.current;
-        const raw = await db.getRepository(Invoice).findOneOrFail({
-            where: { id: invoiceId },
-        });
+    handle("pdf:download", async (configId: string, invoiceId: number) => {
+        const db = await dbManager.getDB(configId);
+        const raw = await db.getRepository(Invoice).findOneOrFail({ where: { id: invoiceId } });
 
         let iban: string | undefined;
         const company = await db.getRepository(Company).findOneBy({ ico: raw.supplierIco });

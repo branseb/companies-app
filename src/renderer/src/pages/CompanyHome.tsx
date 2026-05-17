@@ -1,7 +1,7 @@
-import { Avatar, Box, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Button, Grid, Paper, Stack, Typography } from "@mui/material";
 import {
-    AccountBalance, BadgeOutlined, Business,
-    EmailOutlined, LocalAtm, LocationOnOutlined, MoveToInbox,
+    AccountBalance, BadgeOutlined, Backup, Business,
+    EmailOutlined, History, LocalAtm, LocationOnOutlined, MoveToInbox,
     NoteAdd, PhoneOutlined, ReceiptLong, WarningAmberOutlined,
 } from "@mui/icons-material";
 import type { SvgIconComponent } from "@mui/icons-material";
@@ -115,17 +115,28 @@ export const CompanyHome = () => {
     const navigate = useNavigate();
     const { activeCompany, activeConfigId } = useCompany();
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [exporting, setExporting] = useState(false);
+
+    const handleBackup = async () => {
+        if (!activeCompany?.id) return;
+        setExporting(true);
+        try {
+            await window.api.backup.export(activeConfigId!, activeCompany.id);
+        } finally {
+            setExporting(false);
+        }
+    };
 
     useEffect(() => {
         if (!activeCompany) return;
         const today = new Date(new Date().toDateString());
         Promise.all([
-            window.api.invoice.byCompany(activeCompany.ico),
-            window.api.invoice.byCustomer(activeCompany.ico),
-            window.api.bankTransaction.byCompany(activeCompany.id!),
-            window.api.bankAccount.byCompany(activeCompany.id!),
-            window.api.cashEntry.byCompany(activeCompany.id!),
-            window.api.cashRegister.byCompany(activeCompany.id!),
+            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
+            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
+            window.api.bankTransaction.byCompany(activeConfigId!, activeCompany.id!),
+            window.api.bankAccount.byCompany(activeConfigId!, activeCompany.id!),
+            window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id!),
+            window.api.cashRegister.byCompany(activeConfigId!, activeCompany.id!),
         ]).then(([issued, received, txs, accounts, cashEntries, cashRegs]) => {
             const unpaidIssued = (issued as any[]).filter(i => !i.paid);
             const unpaidReceived = (received as any[]).filter(i => !i.paid);
@@ -183,6 +194,27 @@ export const CompanyHome = () => {
 
     return (
         <Stack gap={4}>
+            {/* Utility actions */}
+            <Stack direction="row" gap={1} justifyContent="flex-end">
+                <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<History />}
+                    onClick={() => navigate(`/${activeConfigId}/audit`)}
+                >
+                    Záznam zmien
+                </Button>
+                <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Backup />}
+                    onClick={handleBackup}
+                    disabled={exporting}
+                >
+                    {exporting ? "Exportujem..." : "Záloha dát"}
+                </Button>
+            </Stack>
+
             {/* Company card */}
             <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
                 {/* Header band */}

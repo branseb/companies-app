@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useCompany } from "../../context/company";
 import {
     Button, Dialog, DialogActions, DialogContent, DialogTitle,
     Divider, IconButton, MenuItem, Select, Stack, TextField, Tooltip, Typography,
@@ -19,6 +20,7 @@ const CURRENCIES = ["EUR", "USD", "CZK", "GBP", "CHF", "PLN", "HUF"];
 const empty = () => ({ name: "", iban: "", currency: "EUR" });
 
 export const BankAccountsDialog: React.FC<Props> = ({ open, accounts, companyId, onClose, onChange }) => {
+    const { activeConfigId } = useCompany();
     const [form, setForm] = useState(empty());
     const [saving, setSaving] = useState(false);
     const [editId, setEditId] = useState<number | null>(null);
@@ -33,7 +35,7 @@ export const BankAccountsDialog: React.FC<Props> = ({ open, accounts, companyId,
 
     const handleSaveEdit = async () => {
         if (!editForm.name.trim() || editId === null) return;
-        await window.api.bankAccount.update({ id: editId, name: editForm.name.trim(), note: editForm.note.trim() || undefined });
+        await window.api.bankAccount.update(activeConfigId!, { id: editId, name: editForm.name.trim(), note: editForm.note.trim() || undefined });
         setEditId(null);
         onChange();
     };
@@ -42,7 +44,7 @@ export const BankAccountsDialog: React.FC<Props> = ({ open, accounts, companyId,
         if (!form.name.trim()) return;
         setSaving(true);
         try {
-            await window.api.bankAccount.create({ name: form.name.trim(), iban: form.iban.trim() || undefined, currency: form.currency, companyId });
+            await window.api.bankAccount.create(activeConfigId!, { name: form.name.trim(), iban: form.iban.trim() || undefined, currency: form.currency, companyId });
             setForm(empty());
             onChange();
         } finally {
@@ -51,7 +53,7 @@ export const BankAccountsDialog: React.FC<Props> = ({ open, accounts, companyId,
     };
 
     const handleDelete = async (id: number) => {
-        await window.api.bankAccount.delete(id);
+        await window.api.bankAccount.delete(activeConfigId!, id);
         onChange();
     };
 

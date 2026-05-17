@@ -3,19 +3,15 @@ import { Invoice } from '../main/database/entities/invoice';
 
 contextBridge.exposeInMainWorld("api", {
   invoice: {
-    create: (data: Invoice) => ipcRenderer.invoke("invoice:create", data),
-    update: (id: number, data: Invoice) => ipcRenderer.invoke("invoice:update", id, data),
-    byCompany: (supplierIco: string) => ipcRenderer.invoke("invoice:by-company", supplierIco),
-    byCustomer: (customerIco: string) => ipcRenderer.invoke("invoice:by-customer", customerIco),
-    knownParties: () => ipcRenderer.invoke("invoice:known-parties"),
-    get: (id: string) => ipcRenderer.invoke("invoice:get", id),
-    nextId: (supplierIco: string) => ipcRenderer.invoke("invoice:next-id", supplierIco),
-    markPaid: (id: number, paid: boolean) => ipcRenderer.invoke("invoice:mark-paid", id, paid),
-    delete: (id: number) => ipcRenderer.invoke("invoice:delete", id)
-  },
-
-  firm: {
-    get: (ico: string) => ipcRenderer.invoke("firm:get", ico)
+    create: (configId: string, data: Invoice) => ipcRenderer.invoke("invoice:create", configId, data),
+    update: (configId: string, id: number, data: Invoice) => ipcRenderer.invoke("invoice:update", configId, id, data),
+    byCompany: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:by-company", configId, supplierIco),
+    byCustomer: (configId: string, customerIco: string) => ipcRenderer.invoke("invoice:by-customer", configId, customerIco),
+    knownParties: (configId: string) => ipcRenderer.invoke("invoice:known-parties", configId),
+    get: (configId: string, id: string) => ipcRenderer.invoke("invoice:get", configId, id),
+    nextId: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:next-id", configId, supplierIco),
+    markPaid: (configId: string, id: number, paid: boolean) => ipcRenderer.invoke("invoice:mark-paid", configId, id, paid),
+    delete: (configId: string, id: number) => ipcRenderer.invoke("invoice:delete", configId, id),
   },
 
   db: {
@@ -28,38 +24,49 @@ contextBridge.exposeInMainWorld("api", {
   },
 
   company: {
-    get: () => ipcRenderer.invoke("company:get"),
-    create: (data: any) => ipcRenderer.invoke("company:create", data),
-    update: (data: any) => ipcRenderer.invoke("company:update", data),
+    get: (configId: string) => ipcRenderer.invoke("company:get", configId),
+    create: (configId: string, data: any) => ipcRenderer.invoke("company:create", configId, data),
+    update: (configId: string, data: any) => ipcRenderer.invoke("company:update", configId, data),
   },
 
   bankAccount: {
-    byCompany: (companyId: number) => ipcRenderer.invoke("bankAccount:by-company", companyId),
-    create: (data: any) => ipcRenderer.invoke("bankAccount:create", data),
-    update: (data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("bankAccount:update", data),
-    delete: (id: number) => ipcRenderer.invoke("bankAccount:delete", id),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke("bankAccount:by-company", configId, companyId),
+    create: (configId: string, data: any) => ipcRenderer.invoke("bankAccount:create", configId, data),
+    update: (configId: string, data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("bankAccount:update", configId, data),
+    delete: (configId: string, id: number) => ipcRenderer.invoke("bankAccount:delete", configId, id),
   },
+
   cashRegister: {
-    byCompany: (companyId: number) => ipcRenderer.invoke("cashRegister:by-company", companyId),
-    create: (data: any) => ipcRenderer.invoke("cashRegister:create", data),
-    update: (data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("cashRegister:update", data),
-    delete: (id: number) => ipcRenderer.invoke("cashRegister:delete", id),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke("cashRegister:by-company", configId, companyId),
+    create: (configId: string, data: any) => ipcRenderer.invoke("cashRegister:create", configId, data),
+    update: (configId: string, data: { id: number; name: string; note?: string }) => ipcRenderer.invoke("cashRegister:update", configId, data),
+    delete: (configId: string, id: number) => ipcRenderer.invoke("cashRegister:delete", configId, id),
   },
+
   cashEntry: {
-    byCompany: (companyId: number) => ipcRenderer.invoke("cashEntry:by-company", companyId),
-    create: (data: any) => ipcRenderer.invoke("cashEntry:create", data),
-    update: (data: any) => ipcRenderer.invoke("cashEntry:update", data),
-    linkInvoice: (id: number, invoiceId: number | null) => ipcRenderer.invoke("cashEntry:link-invoice", id, invoiceId),
-    pairBankTransaction: (id: number, bankTransactionId: number | null) => ipcRenderer.invoke("cashEntry:pair-bank-transaction", id, bankTransactionId),
-    delete: (id: number) => ipcRenderer.invoke("cashEntry:delete", id),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke("cashEntry:by-company", configId, companyId),
+    create: (configId: string, data: any) => ipcRenderer.invoke("cashEntry:create", configId, data),
+    update: (configId: string, data: any) => ipcRenderer.invoke("cashEntry:update", configId, data),
+    linkInvoice: (configId: string, id: number, invoiceId: number | null) => ipcRenderer.invoke("cashEntry:link-invoice", configId, id, invoiceId),
+    pairBankTransaction: (configId: string, id: number, bankTransactionId: number | null) => ipcRenderer.invoke("cashEntry:pair-bank-transaction", configId, id, bankTransactionId),
+    delete: (configId: string, id: number) => ipcRenderer.invoke("cashEntry:delete", configId, id),
   },
+
   bankTransaction: {
-    create: (data: any) => ipcRenderer.invoke("bankTransaction:create", data),
-    bulkImport: (rows: any[], companyId: number, bankAccountId?: number) => ipcRenderer.invoke("bankTransaction:bulk-import", rows, companyId, bankAccountId),
-    byCompany: (companyId: number) => ipcRenderer.invoke("bankTransaction:by-company", companyId),
-    updateNote: (id: number, note: string) => ipcRenderer.invoke("bankTransaction:update-note", id, note),
-    linkInvoice: (id: number, invoiceId: number | null) => ipcRenderer.invoke("bankTransaction:link-invoice", id, invoiceId),
-    delete: (id: number) => ipcRenderer.invoke("bankTransaction:delete", id),
+    create: (configId: string, data: any) => ipcRenderer.invoke("bankTransaction:create", configId, data),
+    bulkImport: (configId: string, rows: any[], companyId: number, bankAccountId?: number) => ipcRenderer.invoke("bankTransaction:bulk-import", configId, rows, companyId, bankAccountId),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke("bankTransaction:by-company", configId, companyId),
+    updateNote: (configId: string, id: number, note: string) => ipcRenderer.invoke("bankTransaction:update-note", configId, id, note),
+    linkInvoice: (configId: string, id: number, invoiceId: number | null) => ipcRenderer.invoke("bankTransaction:link-invoice", configId, id, invoiceId),
+    delete: (configId: string, id: number) => ipcRenderer.invoke("bankTransaction:delete", configId, id),
+  },
+
+  auditLog: {
+    byCompany: (configId: string, companyIco: string) => ipcRenderer.invoke("auditLog:by-company", configId, companyIco),
+  },
+
+  backup: {
+    export: (configId: string, companyId: number) => ipcRenderer.invoke("backup:export", configId, companyId),
   },
 });
 
@@ -71,7 +78,7 @@ contextBridge.exposeInMainWorld("electron", {
     devtools: () => ipcRenderer.send("window:devtools"),
   },
   pdf: {
-    download: (invoiceId: string) => ipcRenderer.invoke("pdf:download", invoiceId),
+    download: (configId: string, invoiceId: string) => ipcRenderer.invoke("pdf:download", configId, invoiceId),
     open: (filePath: string) => ipcRenderer.send("pdf:open", filePath),
   },
 });
