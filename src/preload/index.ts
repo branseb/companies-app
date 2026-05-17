@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld("api", {
 });
 
 contextBridge.exposeInMainWorld("electron", {
+  platform: process.platform,
   window: {
     close: () => ipcRenderer.send("window:close"),
     minimize: () => ipcRenderer.send("window:minimize"),

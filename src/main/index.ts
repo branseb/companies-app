@@ -13,6 +13,7 @@ import { registerBackupIpc } from './ipc/backup';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
+  const isMac = process.platform === 'darwin';
   const win = new BrowserWindow({
     width: 1200,
     height: 900,
@@ -21,7 +22,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    frame: false
+    ...(isMac ? { titleBarStyle: 'hiddenInset' as const } : { frame: false }),
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {

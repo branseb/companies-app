@@ -72,6 +72,7 @@ declare global {
 			};
 		};
 		electron: {
+			platform: string;
 			window: {
 				close: () => void;
 				minimize: () => void;

@@ -27,6 +27,7 @@ const App = () => {
 
 const WindowBar = () => {
 	const { mode, toggleMode } = useThemeMode();
+	const isMac = window.electron.platform === 'darwin';
 
 	return (
 		<Stack
@@ -35,6 +36,7 @@ const WindowBar = () => {
 			direction="row"
 			justifyContent="end"
 			alignItems="center"
+			pl={isMac ? '80px' : 0}
 		>
 			<Tooltip title={mode === "dark" ? "Svetlý režim" : "Tmavý režim"}>
 				<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={toggleMode}>
@@ -44,12 +46,14 @@ const WindowBar = () => {
 			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.devtools()}>
 				<Terminal />
 			</IconButton>
-			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.minimize()}>
-				<Minimize />
-			</IconButton>
-			<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.close()}>
-				<Close />
-			</IconButton>
+			{!isMac && <>
+				<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.minimize()}>
+					<Minimize />
+				</IconButton>
+				<IconButton sx={{ "-webkit-app-region": "no-drag" }} onClick={() => window.electron.window.close()}>
+					<Close />
+				</IconButton>
+			</>}
 		</Stack>
 	);
 };

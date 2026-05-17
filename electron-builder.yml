@@ -14,3 +14,7 @@ win:
   target:
     - target: dir
       arch: [x64]
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
