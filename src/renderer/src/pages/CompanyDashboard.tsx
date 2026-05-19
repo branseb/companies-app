@@ -10,6 +10,8 @@ import { CashRegisterList } from "../components/CashRegisterList";
 import { CompanyHome } from "./CompanyHome";
 import { EditCompanyPage } from "./EditCompanyPage";
 import { AuditLogPage } from "./AuditLogPage";
+import { ChatPage } from "./ChatPage"
+import { DocumentsPage } from "./DocumentsPage";
 
 export const CompanyDashboard = () => {
     const { configId } = useParams<{ configId: string }>();
@@ -94,6 +96,8 @@ export const CompanyDashboard = () => {
                     <Route path="cash" element={<CashRegisterList />} />
                     <Route path="edit" element={<EditCompanyPage onSaved={() => navigate(base)} />} />
                     <Route path="audit" element={<AuditLogPage />} />
+                    <Route path="chat"      element={<ChatPage companyId={configId!} />} />
+                    <Route path="documents" element={<DocumentsPage companyId={configId!} />} />
                     <Route path="*" element={<Navigate to={base} replace />} />
                 </Routes>
             </Container>

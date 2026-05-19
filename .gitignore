@@ -4,3 +4,5 @@ release/
 node_modules/
 *.db
 .claude
+.env
+firebase-service-account.json

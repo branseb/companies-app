@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { TextField, Button, Paper, Typography, Grid, Snackbar, Alert, FormControlLabel, Switch, CircularProgress } from "@mui/material";
+import { useSnackbar } from "../hooks/useSnackbar";
 import { mapToEN16931 } from "../utils/mapToEN16931";
 import type { SimpleInvoice } from "../models/SimpleInvoice";
 import { CurrencySelect } from "./currencySelect";
@@ -15,7 +16,7 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
     const [invoice, setInvoice] = useState<SimpleInvoice | null>(null);
     const [vatEnabled, setVatEnabled] = useState(true);
     const [loading, setLoading] = useState(false);
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
     const today = new Date();
     const due = new Date();
@@ -108,16 +109,16 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
         if (!invoice || !activeCompany) return;
 
         if (!invoice.invoiceNumber.trim()) {
-            setSnackbar({ open: true, message: "Číslo faktúry je povinné", severity: "error" });
+            showSnackbar("Číslo faktúry je povinné", "error");
             return;
         }
         if (!invoice.issueDate) {
-            setSnackbar({ open: true, message: "Dátum vystavenia je povinný", severity: "error" });
+            showSnackbar("Dátum vystavenia je povinný", "error");
             return;
         }
         const totalAmount = (invoice.items ?? []).reduce((s, it) => s + it.quantity * it.unitPrice, 0);
         if (totalAmount <= 0) {
-            setSnackbar({ open: true, message: "Faktúra musí obsahovať aspoň jednu položku s hodnotou > 0", severity: "error" });
+            showSnackbar("Faktúra musí obsahovať aspoň jednu položku s hodnotou > 0", "error");
             return;
         }
 
@@ -126,11 +127,11 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
         try {
             await window.api.invoice.create(activeConfigId!, enInvoice);
             onAdd();
-            setSnackbar({ open: true, message: "Faktúra uložená", severity: "success" });
+            showSnackbar("Faktúra uložená");
             await fetchNextId(activeCompany.ico);
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Chyba pri ukladaní faktúry";
-            setSnackbar({ open: true, message: msg, severity: "error" });
+            showSnackbar(msg, "error");
         } finally {
             setLoading(false);
         }
@@ -271,14 +272,8 @@ export const InvoiceForm: React.FC<{ onAdd: () => void }> = ({ onAdd }) => {
 
                 </Grid>
             </form>
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-            >
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                    {snackbar.message}
-                </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={closeSnackbar}>
+                <Alert severity={snackbar.severity} onClose={closeSnackbar}>{snackbar.message}</Alert>
             </Snackbar>
         </Paper>
     );

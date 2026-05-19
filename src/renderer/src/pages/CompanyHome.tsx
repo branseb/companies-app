@@ -1,29 +1,36 @@
-import { Avatar, Box, Button, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Avatar, Badge, Box, Button, Grid, IconButton, Paper, Stack, Tooltip, Typography } from "@mui/material";
 import {
-    AccountBalance, BadgeOutlined, Backup, Business,
-    EmailOutlined, History, LocalAtm, LocationOnOutlined, MoveToInbox,
-    NoteAdd, PhoneOutlined, ReceiptLong, WarningAmberOutlined,
+    AccountBalance, BadgeOutlined, Backup, Business, Chat,
+    EmailOutlined, Folder, History, Link, LocalAtm, LocationOnOutlined,
+    MoveToInbox, NoteAdd, PhoneOutlined, ReceiptLong, WarningAmberOutlined,
 } from "@mui/icons-material";
+import { useFirebaseAuth } from "../context/firebaseAuth";
+import { useChat } from "../hooks/useChat";
 import type { SvgIconComponent } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompany } from "../context/company";
 import { computeTotal } from "../components/invoice/invoiceUtils";
+import { fmtCurrency } from "../utils/formatters";
+import { StatCard } from "../components/dashboard/StatCard";
+import { InfoItem } from "../components/dashboard/InfoItem";
+import { InviteDialog } from "../components/InviteDialog";
 
 // ─── Tiles ────────────────────────────────────────────────────────────────────
 
 interface Tile { label: string; icon: SvgIconComponent; color: string; page: string; }
 
 const tiles: Tile[] = [
-    { label: "Vytvoriť faktúru", icon: NoteAdd, color: "#1976d2", page: "new-invoice" },
-    { label: "Vydané faktúry", icon: ReceiptLong, color: "#7b1fa2", page: "invoices/issued" },
-    { label: "Prijaté faktúry", icon: MoveToInbox, color: "#e65100", page: "invoices/received" },
-    { label: "Bankové pohyby", icon: AccountBalance, color: "#00695c", page: "bank" },
-    { label: "Pokladňa", icon: LocalAtm, color: "#6a1b9a", page: "cash" },
-    { label: "Údaje firmy", icon: Business, color: "#2e7d32", page: "edit" },
+    { label: "Vytvoriť faktúru",  icon: NoteAdd,       color: "#1976d2", page: "new-invoice"       },
+    { label: "Vydané faktúry",    icon: ReceiptLong,   color: "#7b1fa2", page: "invoices/issued"   },
+    { label: "Prijaté faktúry",   icon: MoveToInbox,   color: "#e65100", page: "invoices/received" },
+    { label: "Bankové pohyby",    icon: AccountBalance, color: "#00695c", page: "bank"             },
+    { label: "Pokladňa",          icon: LocalAtm,      color: "#6a1b9a", page: "cash"              },
+    { label: "Dokumenty",         icon: Folder,        color: "#0277bd", page: "documents"         },
+    { label: "Údaje firmy",       icon: Business,      color: "#2e7d32", page: "edit"              },
 ];
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
+// ─── Stats helpers ────────────────────────────────────────────────────────────
 
 interface InvoiceStat {
     count: number;
@@ -39,9 +46,6 @@ interface DashboardStats {
     cashBalances: { name: string; balance: number; currency: string }[];
 }
 
-const fmtCurrency = (n: number, currency: string) =>
-    new Intl.NumberFormat("sk-SK", { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
-
 function calcStat(invoices: any[]): InvoiceStat {
     const map = new Map<string, number>();
     for (const inv of invoices) {
@@ -54,60 +58,8 @@ function calcStat(invoices: any[]): InvoiceStat {
     };
 }
 
-function fmtTotals(totals: { currency: string; amount: number }[]): string {
-    if (totals.length === 0) return "—";
-    return totals.map(t => fmtCurrency(t.amount, t.currency)).join(" | ");
-}
-
-interface StatCardProps {
-    label: string;
-    value: string;
-    sub?: string;
-    color: "default" | "warning" | "error" | "success" | "info";
-    icon: React.ReactNode;
-}
-
-const STAT_COLORS = {
-    default: { bg: "", text: "text.primary", icon: "text.secondary" },
-    warning: { bg: "warning.50", text: "warning.dark", icon: "warning.main" },
-    error: { bg: "error.50", text: "error.dark", icon: "error.main" },
-    success: { bg: "success.50", text: "success.dark", icon: "success.main" },
-    info: { bg: "info.50", text: "info.dark", icon: "info.main" },
-};
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, sub, color, icon }) => {
-    const c = STAT_COLORS[color];
-    return (
-        <Paper variant="outlined" sx={{ borderRadius: 2, bgcolor: c.bg, borderColor: "transparent", minWidth: 110 }}>
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
-                <Stack gap={0.25}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500} textTransform="uppercase" letterSpacing={0.5} fontSize={10}>
-                        {label}
-                    </Typography>
-                    <Typography variant="h6" fontWeight={700} color={c.text}>
-                        {value}
-                    </Typography>
-                    {sub && <Typography variant="caption" color="text.secondary" fontSize={11}>{sub}</Typography>}
-                </Stack>
-                <Box sx={{ color: c.icon, opacity: 0.6 }}>{icon}</Box>
-            </Stack>
-        </Paper>
-    );
-};
-
-// ─── Company card ─────────────────────────────────────────────────────────────
-
-interface InfoItemProps { icon: React.ReactNode; label: string; value: string; mono?: boolean; }
-
-const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value, mono }) => (
-    <Stack direction="row" alignItems="center" gap={1.5}>
-        <Box sx={{ color: "primary.main", display: "flex", flexShrink: 0 }}>{icon}</Box>
-        <Box>
-            <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
-            <Typography variant="body2" fontWeight={500} fontFamily={mono ? "monospace" : undefined}>{value}</Typography>
-        </Box>
-    </Stack>
-);
+const fmtTotals = (totals: { currency: string; amount: number }[]): string =>
+    totals.length === 0 ? "—" : totals.map(t => fmtCurrency(t.amount, t.currency)).join(" | ");
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -116,6 +68,10 @@ export const CompanyHome = () => {
     const { activeCompany, activeConfigId } = useCompany();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [exporting, setExporting] = useState(false);
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const { fbUser } = useFirebaseAuth();
+    const { messages } = useChat(activeConfigId ?? "", "accountant", !!fbUser);
+    const unread = fbUser ? messages.filter(m => m.from === "company" && !m.readByAccountant).length : 0;
 
     const handleBackup = async () => {
         if (!activeCompany?.id) return;
@@ -138,15 +94,14 @@ export const CompanyHome = () => {
             window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id!),
             window.api.cashRegister.byCompany(activeConfigId!, activeCompany.id!),
         ]).then(([issued, received, txs, accounts, cashEntries, cashRegs]) => {
-            const unpaidIssued = (issued as any[]).filter(i => !i.paid);
-            const unpaidReceived = (received as any[]).filter(i => !i.paid);
-            const overdueIssued = unpaidIssued.filter(i => i.dueDate && new Date(i.dueDate) < today);
+            const unpaidIssued    = (issued as any[]).filter(i => !i.paid);
+            const unpaidReceived  = (received as any[]).filter(i => !i.paid);
+            const overdueIssued   = unpaidIssued.filter(i => i.dueDate && new Date(i.dueDate) < today);
             const overdueReceived = unpaidReceived.filter(i => i.dueDate && new Date(i.dueDate) < today);
 
             const balanceMap = new Map<number, number>();
             (txs as any[]).forEach(t => {
-                if (!t.bankAccountId) return;
-                balanceMap.set(t.bankAccountId, (balanceMap.get(t.bankAccountId) ?? 0) + (t.amount as number));
+                if (t.bankAccountId) balanceMap.set(t.bankAccountId, (balanceMap.get(t.bankAccountId) ?? 0) + (t.amount as number));
             });
             const accountBalances = (accounts as any[]).map(a => ({
                 name: a.name as string,
@@ -156,8 +111,7 @@ export const CompanyHome = () => {
 
             const cashBalanceMap = new Map<number, number>();
             (cashEntries as any[]).forEach(e => {
-                if (!e.cashRegisterId) return;
-                cashBalanceMap.set(e.cashRegisterId, (cashBalanceMap.get(e.cashRegisterId) ?? 0) + (e.amount as number));
+                if (e.cashRegisterId) cashBalanceMap.set(e.cashRegisterId, (cashBalanceMap.get(e.cashRegisterId) ?? 0) + (e.amount as number));
             });
             const cashBalances = (cashRegs as any[]).map(r => ({
                 name: r.name as string,
@@ -166,9 +120,9 @@ export const CompanyHome = () => {
             }));
 
             setStats({
-                unpaidIssued: calcStat(unpaidIssued),
-                unpaidReceived: calcStat(unpaidReceived),
-                overdueIssued: calcStat(overdueIssued),
+                unpaidIssued:    calcStat(unpaidIssued),
+                unpaidReceived:  calcStat(unpaidReceived),
+                overdueIssued:   calcStat(overdueIssued),
                 overdueReceived: calcStat(overdueReceived),
                 accountBalances,
                 cashBalances,
@@ -178,63 +132,50 @@ export const CompanyHome = () => {
 
     if (!activeCompany) return null;
 
-    const initials = activeCompany.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(w => w[0].toUpperCase())
-        .join("");
-
-    const address = [activeCompany.address, activeCompany.zip, activeCompany.city].filter(Boolean).join(", ");
+    const initials = activeCompany.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+    const address  = [activeCompany.address, activeCompany.zip, activeCompany.city].filter(Boolean).join(", ");
     const idFields = [
-        activeCompany.ico && { label: "IČO", value: activeCompany.ico, mono: true },
-        activeCompany.dic && { label: "DIČ", value: activeCompany.dic, mono: true },
+        activeCompany.ico   && { label: "IČO",    value: activeCompany.ico,   mono: true },
+        activeCompany.dic   && { label: "DIČ",    value: activeCompany.dic,   mono: true },
         activeCompany.icDph && { label: "IČ DPH", value: activeCompany.icDph, mono: true },
     ].filter(Boolean) as { label: string; value: string; mono: boolean }[];
 
     return (
+        <>
         <Stack gap={4}>
             {/* Utility actions */}
             <Stack direction="row" gap={1} justifyContent="flex-end">
-                <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<History />}
-                    onClick={() => navigate(`/${activeConfigId}/audit`)}
-                >
+                <Button size="small" variant="outlined" startIcon={<History />} onClick={() => navigate(`/${activeConfigId}/audit`)}>
                     Záznam zmien
                 </Button>
-                <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Backup />}
-                    onClick={handleBackup}
-                    disabled={exporting}
-                >
+                <Button size="small" variant="outlined" startIcon={<Backup />} onClick={handleBackup} disabled={exporting}>
                     {exporting ? "Exportujem..." : "Záloha dát"}
+                </Button>
+                <Button size="small" variant="contained" startIcon={<Link />} onClick={() => setInviteOpen(true)}>
+                    Pozvať na portál
                 </Button>
             </Stack>
 
             {/* Company card */}
             <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
-                {/* Header band */}
                 <Box sx={{ bgcolor: "primary.main", px: 3, py: 2.5, color: "white" }}>
                     <Stack direction="row" alignItems="center" gap={2}>
                         <Avatar sx={{ bgcolor: "primary.dark", width: 52, height: 52, fontSize: 20, fontWeight: 700 }}>
                             {initials}
                         </Avatar>
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>
-                                {activeCompany.name}
-                            </Typography>
+                        <Box flex={1}>
+                            <Typography variant="h6" fontWeight={700}>{activeCompany.name}</Typography>
                             {activeCompany.ico && (
                                 <Typography variant="caption" sx={{ opacity: 0.8 }}>IČO {activeCompany.ico}</Typography>
                             )}
                         </Box>
+                        <Tooltip title="Chat s firmou">
+                            <IconButton onClick={() => navigate(`/${activeConfigId}/chat`)} sx={{ color: "white" }}>
+                                <Badge badgeContent={unread} color="error"><Chat /></Badge>
+                            </IconButton>
+                        </Tooltip>
                     </Stack>
                 </Box>
-
-                {/* Info grid */}
                 <Box sx={{ p: 3 }}>
                     <Grid container spacing={2.5}>
                         {idFields.map(f => (
@@ -266,24 +207,10 @@ export const CompanyHome = () => {
                 <Stack direction="row" gap={2} flexWrap="wrap" alignItems="stretch">
                     <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
                         <Stack gap={0.75}>
-                            <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
-                                Neuhradené faktúry
-                            </Typography>
+                            <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">Neuhradené faktúry</Typography>
                             <Stack direction="row" gap={1} flexWrap="wrap">
-                                <StatCard
-                                    label="Vydané"
-                                    value={String(stats.unpaidIssued.count)}
-                                    sub={fmtTotals(stats.unpaidIssued.totals)}
-                                    color={stats.unpaidIssued.count > 0 ? "warning" : "default"}
-                                    icon={<ReceiptLong />}
-                                />
-                                <StatCard
-                                    label="Prijaté"
-                                    value={String(stats.unpaidReceived.count)}
-                                    sub={fmtTotals(stats.unpaidReceived.totals)}
-                                    color={stats.unpaidReceived.count > 0 ? "warning" : "default"}
-                                    icon={<MoveToInbox />}
-                                />
+                                <StatCard label="Vydané"  value={String(stats.unpaidIssued.count)}   sub={fmtTotals(stats.unpaidIssued.totals)}   color={stats.unpaidIssued.count > 0 ? "warning" : "default"}   icon={<ReceiptLong />} />
+                                <StatCard label="Prijaté" value={String(stats.unpaidReceived.count)} sub={fmtTotals(stats.unpaidReceived.totals)} color={stats.unpaidReceived.count > 0 ? "warning" : "default"} icon={<MoveToInbox />} />
                             </Stack>
                         </Stack>
                     </Paper>
@@ -291,27 +218,13 @@ export const CompanyHome = () => {
                     {(stats.overdueIssued.count > 0 || stats.overdueReceived.count > 0) && (
                         <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto", borderColor: "error.light" }}>
                             <Stack gap={0.75}>
-                                <Typography variant="overline" color="error.main" fontWeight={600} display="block">
-                                    Po splatnosti
-                                </Typography>
+                                <Typography variant="overline" color="error.main" fontWeight={600} display="block">Po splatnosti</Typography>
                                 <Stack direction="row" gap={1} flexWrap="wrap">
                                     {stats.overdueIssued.count > 0 && (
-                                        <StatCard
-                                            label="Vydané"
-                                            value={String(stats.overdueIssued.count)}
-                                            sub={fmtTotals(stats.overdueIssued.totals)}
-                                            color="error"
-                                            icon={<WarningAmberOutlined />}
-                                        />
+                                        <StatCard label="Vydané"  value={String(stats.overdueIssued.count)}   sub={fmtTotals(stats.overdueIssued.totals)}   color="error" icon={<WarningAmberOutlined />} />
                                     )}
                                     {stats.overdueReceived.count > 0 && (
-                                        <StatCard
-                                            label="Prijaté"
-                                            value={String(stats.overdueReceived.count)}
-                                            sub={fmtTotals(stats.overdueReceived.totals)}
-                                            color="error"
-                                            icon={<WarningAmberOutlined />}
-                                        />
+                                        <StatCard label="Prijaté" value={String(stats.overdueReceived.count)} sub={fmtTotals(stats.overdueReceived.totals)} color="error" icon={<WarningAmberOutlined />} />
                                     )}
                                 </Stack>
                             </Stack>
@@ -321,18 +234,10 @@ export const CompanyHome = () => {
                     {stats.accountBalances.length > 0 && (
                         <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
                             <Stack gap={0.75}>
-                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
-                                    Bankové účty
-                                </Typography>
+                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">Bankové účty</Typography>
                                 <Stack direction="row" gap={1} flexWrap="wrap">
                                     {stats.accountBalances.map(a => (
-                                        <StatCard
-                                            key={a.name}
-                                            label={a.name}
-                                            value={fmtCurrency(a.balance, a.currency)}
-                                            color={a.balance >= 0 ? "success" : "error"}
-                                            icon={<AccountBalance />}
-                                        />
+                                        <StatCard key={a.name} label={a.name} value={fmtCurrency(a.balance, a.currency)} color={a.balance >= 0 ? "success" : "error"} icon={<AccountBalance />} />
                                     ))}
                                 </Stack>
                             </Stack>
@@ -342,18 +247,10 @@ export const CompanyHome = () => {
                     {stats.cashBalances.length > 0 && (
                         <Paper variant="outlined" sx={{ borderRadius: 2, p: 1, flex: "0 0 auto" }}>
                             <Stack gap={0.75}>
-                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">
-                                    Pokladne
-                                </Typography>
+                                <Typography variant="overline" color="text.secondary" fontWeight={600} display="block">Pokladne</Typography>
                                 <Stack direction="row" gap={1} flexWrap="wrap">
                                     {stats.cashBalances.map(c => (
-                                        <StatCard
-                                            key={c.name}
-                                            label={c.name}
-                                            value={fmtCurrency(c.balance, c.currency)}
-                                            color={c.balance >= 0 ? "success" : "error"}
-                                            icon={<LocalAtm />}
-                                        />
+                                        <StatCard key={c.name} label={c.name} value={fmtCurrency(c.balance, c.currency)} color={c.balance >= 0 ? "success" : "error"} icon={<LocalAtm />} />
                                     ))}
                                 </Stack>
                             </Stack>
@@ -371,30 +268,31 @@ export const CompanyHome = () => {
                             <Box
                                 onClick={() => navigate(`/${activeConfigId}/${tile.page}`)}
                                 sx={{
-                                    bgcolor: tile.color,
-                                    color: "white",
-                                    borderRadius: 3,
-                                    p: 3.5,
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    alignItems: "center",
-                                    gap: 1.5,
-                                    userSelect: "none",
+                                    bgcolor: tile.color, color: "white", borderRadius: 3, p: 3.5,
+                                    cursor: "pointer", display: "flex", flexDirection: "column",
+                                    alignItems: "center", gap: 1.5, userSelect: "none",
                                     "&:hover": { filter: "brightness(1.12)" },
                                     "&:active": { filter: "brightness(0.92)" },
                                     transition: "filter 0.15s",
                                 }}
                             >
                                 <Icon sx={{ fontSize: 42 }} />
-                                <Typography variant="h6" fontWeight={600} fontSize={15}>
-                                    {tile.label}
-                                </Typography>
+                                <Typography variant="h6" fontWeight={600} fontSize={15}>{tile.label}</Typography>
                             </Box>
                         </Grid>
                     );
                 })}
             </Grid>
         </Stack>
+
+        {activeConfigId && (
+            <InviteDialog
+                open={inviteOpen}
+                onClose={() => setInviteOpen(false)}
+                companyId={activeConfigId}
+                companyName={activeCompany.name}
+            />
+        )}
+        </>
     );
 };

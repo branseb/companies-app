@@ -68,6 +68,15 @@ contextBridge.exposeInMainWorld("api", {
   backup: {
     export: (configId: string, companyId: number) => ipcRenderer.invoke("backup:export", configId, companyId),
   },
+
+  invite: {
+    isConfigured: () => ipcRenderer.invoke("invite:isConfigured"),
+    setup:        () => ipcRenderer.invoke("invite:setup"),
+    getPortalUrl: () => ipcRenderer.invoke("invite:getPortalUrl"),
+    setPortalUrl: (url: string) => ipcRenderer.invoke("invite:setPortalUrl", url),
+    create:       (companyId: string, companyName: string) => ipcRenderer.invoke("invite:create", companyId, companyName),
+    list:         () => ipcRenderer.invoke("invite:list"),
+  },
 });
 
 contextBridge.exposeInMainWorld("electron", {

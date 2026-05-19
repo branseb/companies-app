@@ -16,11 +16,8 @@ import { BankAccountsDialog } from "./bankTransaction/BankAccountsDialog";
 import { buildSuggestions, parseCSV, parseXML, toInvoiceOption } from "../utils/bankTransactionParsers";
 import { fmt } from "../models/bankTransaction";
 
-const fmtDate = (d: string) => {
-    if (!d) return "—";
-    const [y, m, day] = d.slice(0, 10).split("-");
-    return y && m && day ? `${parseInt(day)}. ${parseInt(m)}. ${y}` : d;
-};
+import { fmtDate } from "../utils/formatters";
+import { useSnackbar } from "../hooks/useSnackbar";
 import type { ImportRow, InvoiceOption, MatchSuggestion, Tx } from "../models/bankTransaction";
 
 export const BankTransactionList: React.FC = () => {
@@ -34,7 +31,7 @@ export const BankTransactionList: React.FC = () => {
     const [activeAccountId, setActiveAccountId] = useState<number | null>(null);
     const [manageDialog, setManageDialog] = useState(false);
     const [showForm, setShowForm] = useState(false);
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
     // Import dialogs
     const fileRef = useRef<HTMLInputElement>(null);
@@ -81,9 +78,6 @@ export const BankTransactionList: React.FC = () => {
 
     useEffect(() => { load(); loadInvoices(); loadAccounts(); loadCash(); }, [load, loadInvoices, loadAccounts, loadCash]);
 
-    const showSnack = (message: string, severity: "success" | "error" = "success") =>
-        setSnackbar({ open: true, message, severity });
-
     const handleDelete = async (id: number) => {
         await window.api.bankTransaction.delete(activeConfigId!, id);
         load();
@@ -97,7 +91,7 @@ export const BankTransactionList: React.FC = () => {
             const text = ev.target?.result as string;
             if (file.name.toLowerCase().endsWith(".xml")) {
                 const result = parseXML(text);
-                if ("error" in result) showSnack(result.error, "error");
+                if ("error" in result) showSnackbar(result.error, "error");
                 else setXmlDialog({ open: true, rows: result.rows, format: result.format, accountIban: result.accountIban });
             } else {
                 const rows = parseCSV(text);
@@ -109,14 +103,14 @@ export const BankTransactionList: React.FC = () => {
     };
 
     const handleImport = async (rows: ImportRow[], bankAccountId?: number) => {
-        if (!activeCompany?.id || !rows.length) { showSnack("Žiadne platné riadky na import", "error"); return; }
+        if (!activeCompany?.id || !rows.length) { showSnackbar("Žiadne platné riadky na import", "error"); return; }
         try {
             await window.api.bankTransaction.bulkImport(activeConfigId!, rows, activeCompany.id, bankAccountId ?? activeAccountId ?? undefined);
             setCsvDialog(d => ({ ...d, open: false }));
             setXmlDialog(d => ({ ...d, open: false }));
             load();
-            showSnack(`Importovaných ${rows.length} pohybov`);
-        } catch { showSnack("Chyba pri importe", "error"); }
+            showSnackbar(`Importovaných ${rows.length} pohybov`);
+        } catch { showSnackbar("Chyba pri importe", "error"); }
     };
 
     const handleLink = async (txId: number, invoiceId: number) => {
@@ -359,8 +353,8 @@ export const BankTransactionList: React.FC = () => {
                 </Stack>
             </Popover>
 
-            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>{snackbar.message}</Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={closeSnackbar}>
+                <Alert severity={snackbar.severity} onClose={closeSnackbar}>{snackbar.message}</Alert>
             </Snackbar>
 
             <BankAccountsDialog

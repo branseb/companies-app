@@ -12,7 +12,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "composite": true
+    "composite": true,
+    "types": ["vite/client"]
   },
   "include": ["src/renderer/src/**/*"]
 }

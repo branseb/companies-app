@@ -10,6 +10,7 @@ import { registerBankAccountIpc } from './ipc/bankAccounts';
 import { registerCashIpc } from './ipc/cash';
 import { registerAuditLogIpc } from './ipc/auditLog';
 import { registerBackupIpc } from './ipc/backup';
+import { registerInviteIpc } from './ipc/invite';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -43,6 +44,7 @@ app.whenReady().then(async () => {
   registerCashIpc();
   registerAuditLogIpc();
   registerBackupIpc();
+  registerInviteIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });

@@ -3,6 +3,7 @@ import {
     Alert, Button, Grid, MenuItem, Paper, Select, Snackbar,
     TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
+import { useSnackbar } from "../hooks/useSnackbar";
 import { CurrencySelect } from "./currencySelect";
 import { FormSection } from "./FormSection";
 import { useCompany } from "../context/company";
@@ -48,9 +49,7 @@ export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], ban
     const { activeCompany, activeConfigId } = useCompany();
     const [form, setForm] = useState<FormData>(empty());
     const [selectedAccountId, setSelectedAccountId] = useState<number | "">(bankAccountId ?? "");
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-        open: false, message: "", severity: "success",
-    });
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
     const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -60,7 +59,7 @@ export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], ban
         if (!activeCompany) return;
         const raw = parseFloat(form.absAmount.replace(",", "."));
         if (isNaN(raw) || raw <= 0) {
-            setSnackbar({ open: true, message: "Zadajte platnú sumu", severity: "error" });
+            showSnackbar("Zadajte platnú sumu", "error");
             return;
         }
         const amount = form.type === "credit" ? raw : -raw;
@@ -81,9 +80,9 @@ export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], ban
             });
             setForm(empty());
             onAdd();
-            setSnackbar({ open: true, message: "Transakcia uložená", severity: "success" });
+            showSnackbar("Transakcia uložená");
         } catch {
-            setSnackbar({ open: true, message: "Chyba pri ukladaní", severity: "error" });
+            showSnackbar("Chyba pri ukladaní", "error");
         }
     };
 
@@ -215,10 +214,8 @@ export const BankTransactionForm: React.FC<Props> = ({ onAdd, accounts = [], ban
                 </Grid>
             </form>
 
-            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                    {snackbar.message}
-                </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={closeSnackbar}>
+                <Alert severity={snackbar.severity} onClose={closeSnackbar}>{snackbar.message}</Alert>
             </Snackbar>
         </Paper>
     );

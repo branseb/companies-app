@@ -70,6 +70,15 @@ declare global {
 			backup: {
 				export: (configId: string, companyId: number) => Promise<string>;
 			};
+
+			invite: {
+				isConfigured: () => Promise<boolean>;
+				setup:        () => Promise<{ success: boolean; error?: string }>;
+				getPortalUrl: () => Promise<string>;
+				setPortalUrl: (url: string) => Promise<void>;
+				create:       (companyId: string, companyName: string) => Promise<{ code: string; link: string }>;
+				list:         () => Promise<any[]>;
+			};
 		};
 		electron: {
 			platform: string;

@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-    IconButton, MenuItem, Paper, Select, Snackbar, Stack,
+    Alert, Button, Chip, IconButton, Paper, Stack,
     Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt, SaveOutlined } from "@mui/icons-material";
+import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
 import { useCompany } from "../context/company";
 import { useNavigate } from "react-router-dom";
 import type { CashEntry, CashRegister } from "../models/cashEntry";
@@ -13,239 +12,12 @@ import { fmt } from "../models/cashEntry";
 import type { InvoiceOption, Tx } from "../models/bankTransaction";
 import { fmt as fmtBank } from "../models/bankTransaction";
 import { toInvoiceOption } from "../utils/bankTransactionParsers";
+import { fmtDate } from "../utils/formatters";
 import { LinkInvoiceDialog } from "./bankTransaction/InvoiceDialogs";
 import { PairBankTxDialog } from "./cash/PairBankTxDialog";
-
-const fmtDate = (d: string) => {
-    if (!d) return "—";
-    const [y, m, day] = d.slice(0, 10).split("-");
-    return y && m && day ? `${parseInt(day)}. ${parseInt(m)}. ${y}` : d;
-};
-
-const today = () => new Date().toISOString().split("T")[0];
-
-// ── Entry form ────────────────────────────────────────────────────────────────
-
-interface EntryFormProps {
-    registers: CashRegister[];
-    defaultRegisterId: number | null;
-    defaultCurrency: string;
-    onAdd: () => void;
-}
-
-const EntryForm: React.FC<EntryFormProps> = ({ registers, defaultRegisterId, defaultCurrency, onAdd }) => {
-    const { activeCompany, activeConfigId } = useCompany();
-    const [date, setDate] = useState(today());
-    const [amount, setAmount] = useState("");
-    const [type, setType] = useState<"income" | "expense">("income");
-    const [description, setDescription] = useState("");
-    const [registerId, setRegisterId] = useState<number>(
-        defaultRegisterId ?? registers[0]?.id ?? 0
-    );
-    const [saving, setSaving] = useState(false);
-
-    const currency = registers.find(r => r.id === registerId)?.currency ?? defaultCurrency;
-
-    const handleSave = async () => {
-        const num = parseFloat(amount.replace(",", "."));
-        if (!date || isNaN(num) || num <= 0 || !registerId) return;
-        setSaving(true);
-        await window.api.cashEntry.create(activeConfigId!, {
-            companyId: activeCompany!.id!,
-            date,
-            amount: type === "income" ? num : -num,
-            currency,
-            description: description || undefined,
-            cashRegisterId: registerId,
-        });
-        setAmount("");
-        setDescription("");
-        setSaving(false);
-        onAdd();
-    };
-
-    return (
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <Stack direction="row" gap={1} flexWrap="wrap" alignItems="flex-end">
-                <TextField label="Dátum" type="date" size="small" value={date} onChange={e => setDate(e.target.value)} sx={{ width: 150 }} InputLabelProps={{ shrink: true }} />
-                <Select size="small" value={type} onChange={e => setType(e.target.value as "income" | "expense")} sx={{ minWidth: 120 }}>
-                    <MenuItem value="income">Príjem</MenuItem>
-                    <MenuItem value="expense">Výdaj</MenuItem>
-                </Select>
-                <TextField label="Suma" size="small" value={amount} onChange={e => setAmount(e.target.value)} sx={{ width: 130 }} placeholder="0,00" />
-                <Select size="small" value={registerId} onChange={e => setRegisterId(e.target.value as number)} sx={{ minWidth: 150 }}>
-                    {registers.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
-                </Select>
-                <TextField label="Popis" size="small" value={description} onChange={e => setDescription(e.target.value)} sx={{ flex: 1, minWidth: 200 }} />
-                <Button variant="contained" startIcon={<SaveOutlined />} onClick={handleSave} disabled={saving || !amount || !registerId}>
-                    Uložiť
-                </Button>
-            </Stack>
-        </Paper>
-    );
-};
-
-// ── Manage registers dialog ───────────────────────────────────────────────────
-
-interface ManageDialogProps {
-    open: boolean;
-    registers: CashRegister[];
-    companyId: number;
-    onClose: () => void;
-    onChange: () => void;
-}
-
-const ManageDialog: React.FC<ManageDialogProps> = ({ open, registers, companyId, onClose, onChange }) => {
-    const { activeConfigId } = useCompany();
-    const [name, setName] = useState("");
-    const [currency, setCurrency] = useState("EUR");
-    const [editId, setEditId] = useState<number | null>(null);
-    const [editName, setEditName] = useState("");
-
-    const handleCreate = async () => {
-        if (!name.trim()) return;
-        await window.api.cashRegister.create(activeConfigId!, { name: name.trim(), currency, companyId });
-        setName("");
-        onChange();
-    };
-
-    const handleUpdate = async (id: number) => {
-        await window.api.cashRegister.update(activeConfigId!, { id, name: editName.trim() });
-        setEditId(null);
-        onChange();
-    };
-
-    const handleDelete = async (id: number) => {
-        await window.api.cashRegister.delete(activeConfigId!, id);
-        onChange();
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitle>Správa pokladní</DialogTitle>
-            <DialogContent>
-                <Stack gap={2} mt={1}>
-                    <Stack direction="row" gap={1}>
-                        <TextField label="Názov pokladne" size="small" value={name} onChange={e => setName(e.target.value)} sx={{ flex: 1 }} />
-                        <Select size="small" value={currency} onChange={e => setCurrency(e.target.value)} sx={{ width: 90 }}>
-                            {["EUR", "USD", "CZK", "GBP"].map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                        </Select>
-                        <Button variant="contained" startIcon={<Add />} onClick={handleCreate} disabled={!name.trim()}>
-                            Pridať
-                        </Button>
-                    </Stack>
-                    {registers.map(r => (
-                        <Stack key={r.id} direction="row" alignItems="center" gap={1}>
-                            {editId === r.id ? (
-                                <>
-                                    <TextField size="small" value={editName} onChange={e => setEditName(e.target.value)} sx={{ flex: 1 }} autoFocus />
-                                    <Button size="small" variant="contained" onClick={() => handleUpdate(r.id)}>Uložiť</Button>
-                                    <Button size="small" onClick={() => setEditId(null)}>Zrušiť</Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Typography sx={{ flex: 1 }}>{r.name} <Typography component="span" variant="caption" color="text.secondary">({r.currency})</Typography></Typography>
-                                    <Tooltip title="Premenovať">
-                                        <IconButton size="small" onClick={() => { setEditId(r.id); setEditName(r.name); }}><Edit fontSize="small" /></IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Vymazať pokladňu">
-                                        <IconButton size="small" color="error" onClick={() => handleDelete(r.id)}><DeleteOutline fontSize="small" /></IconButton>
-                                    </Tooltip>
-                                </>
-                            )}
-                        </Stack>
-                    ))}
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Zavrieť</Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
-// ── Edit entry dialog ─────────────────────────────────────────────────────────
-
-interface EditEntryDialogProps {
-    entry: CashEntry | null;
-    onClose: () => void;
-    onSaved: () => void;
-}
-
-const EditEntryDialog: React.FC<EditEntryDialogProps> = ({ entry, onClose, onSaved }) => {
-    const { activeConfigId } = useCompany();
-    const [date, setDate] = useState("");
-    const [entryType, setEntryType] = useState<"income" | "expense">("income");
-    const [amount, setAmount] = useState("");
-    const [description, setDescription] = useState("");
-    const [note, setNote] = useState("");
-    const [saving, setSaving] = useState(false);
-
-    useEffect(() => {
-        if (!entry) return;
-        setDate(entry.date);
-        setEntryType(entry.amount >= 0 ? "income" : "expense");
-        setAmount(String(Math.abs(entry.amount)));
-        setDescription(entry.description ?? "");
-        setNote(entry.note ?? "");
-    }, [entry]);
-
-    const handleSave = async () => {
-        if (!entry) return;
-        const num = parseFloat(amount.replace(",", "."));
-        if (!date || isNaN(num) || num <= 0) return;
-        setSaving(true);
-        await window.api.cashEntry.update(activeConfigId!, {
-            id: entry.id,
-            date,
-            amount: entryType === "income" ? num : -num,
-            description: description || undefined,
-            note: note || undefined,
-        });
-        setSaving(false);
-        onSaved();
-    };
-
-    return (
-        <Dialog open={!!entry} onClose={onClose} fullWidth maxWidth="xs">
-            <DialogTitle>Upraviť doklad</DialogTitle>
-            <DialogContent>
-                <Stack gap={2} mt={1}>
-                    <TextField
-                        label="Dátum" type="date" size="small" fullWidth
-                        value={date} onChange={e => setDate(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <Select size="small" fullWidth value={entryType} onChange={e => setEntryType(e.target.value as "income" | "expense")}>
-                        <MenuItem value="income">Príjem</MenuItem>
-                        <MenuItem value="expense">Výdaj</MenuItem>
-                    </Select>
-                    <TextField
-                        label="Suma" size="small" fullWidth type="number"
-                        value={amount} onChange={e => setAmount(e.target.value)}
-                        inputProps={{ step: "0.01", min: "0" }}
-                    />
-                    <TextField
-                        label="Popis" size="small" fullWidth
-                        value={description} onChange={e => setDescription(e.target.value)}
-                    />
-                    <TextField
-                        label="Poznámka" size="small" fullWidth multiline rows={2}
-                        value={note} onChange={e => setNote(e.target.value)}
-                    />
-                </Stack>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Zrušiť</Button>
-                <Button variant="contained" onClick={handleSave} disabled={saving || !date || !amount}>
-                    Uložiť
-                </Button>
-            </DialogActions>
-        </Dialog>
-    );
-};
-
-// ── Main ──────────────────────────────────────────────────────────────────────
+import { EntryForm } from "./cash/EntryForm";
+import { ManageDialog } from "./cash/ManageDialog";
+import { EditEntryDialog } from "./cash/EditEntryDialog";
 
 export const CashRegisterList: React.FC = () => {
     const { activeCompany, activeConfigId } = useCompany();
@@ -261,8 +33,6 @@ export const CashRegisterList: React.FC = () => {
     const [linkTarget, setLinkTarget] = useState<CashEntry | null>(null);
     const [pairTarget, setPairTarget] = useState<CashEntry | null>(null);
     const [search, setSearch] = useState("");
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
-
     const [editEntry, setEditEntry] = useState<CashEntry | null>(null);
 
     const load = useCallback(async () => {
@@ -323,15 +93,7 @@ export const CashRegisterList: React.FC = () => {
         setBankTransactions(prev => prev.map(t => t.id === bankTxId ? { ...t, pairedCashEntryId: undefined } : t));
     };
 
-    const handleEditSaved = () => {
-        setEditEntry(null);
-        load();
-    };
-
-    const byRegister = activeRegisterId === null
-        ? entries
-        : entries.filter(e => e.cashRegisterId === activeRegisterId);
-
+    const byRegister = activeRegisterId === null ? entries : entries.filter(e => e.cashRegisterId === activeRegisterId);
     const q = search.toLowerCase();
     const displayed = q
         ? byRegister.filter(e => e.description?.toLowerCase().includes(q) || e.note?.toLowerCase().includes(q))
@@ -340,13 +102,10 @@ export const CashRegisterList: React.FC = () => {
     const income = displayed.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
     const expense = displayed.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0);
     const currency = displayed[0]?.currency ?? registers.find(r => r.id === activeRegisterId)?.currency ?? "EUR";
-
-    // per-register balance for the active tab header
     const balance = income + expense;
 
     return (
         <Stack gap={3}>
-            {/* Header */}
             <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="h5" fontWeight={700}>Pokladňa</Typography>
                 <Stack direction="row" gap={1}>
@@ -366,7 +125,6 @@ export const CashRegisterList: React.FC = () => {
                 </Stack>
             </Stack>
 
-            {/* Register tabs */}
             {registers.length > 0 && (
                 <Tabs
                     value={activeRegisterId ?? "all"}
@@ -378,7 +136,6 @@ export const CashRegisterList: React.FC = () => {
                 </Tabs>
             )}
 
-            {/* Summary */}
             {displayed.length > 0 && (
                 <Stack direction="row" gap={1} flexWrap="wrap">
                     <Chip label={`Príjmy: ${fmt(income, currency)}`} color="success" variant="outlined" />
@@ -396,7 +153,6 @@ export const CashRegisterList: React.FC = () => {
                 />
             )}
 
-            {/* Search */}
             {registers.length > 0 && (
                 <TextField
                     size="small" placeholder="Hľadať v dokladoch (popis, poznámka)..."
@@ -405,7 +161,6 @@ export const CashRegisterList: React.FC = () => {
                 />
             )}
 
-            {/* Table */}
             {registers.length === 0 ? (
                 <Alert severity="info">
                     Najprv vytvorte pokladňu — kliknite na <strong>Pridať doklad</strong> alebo ikonu nastavení vpravo hore.
@@ -456,7 +211,6 @@ export const CashRegisterList: React.FC = () => {
                                                 {entry.amount >= 0 ? "+" : ""}{fmt(entry.amount, entry.currency)}
                                             </Typography>
                                         </TableCell>
-                                        {/* Invoice link */}
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
                                             {linkedInv ? (
                                                 <Stack direction="row" alignItems="center" gap={0.5}>
@@ -484,7 +238,6 @@ export const CashRegisterList: React.FC = () => {
                                                 </Tooltip>
                                             )}
                                         </TableCell>
-                                        {/* Bank transaction pair */}
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
                                             {entry.pairedBankTransactionId ? (() => {
                                                 const paired = bankTransactions.find(t => t.id === entry.pairedBankTransactionId);
@@ -535,7 +288,6 @@ export const CashRegisterList: React.FC = () => {
                 </TableContainer>
             )}
 
-            {/* Link invoice dialog — reuses the bank module dialog, adapted for CashEntry */}
             <LinkInvoiceDialog
                 open={!!linkTarget}
                 tx={(linkTarget ? {
@@ -562,7 +314,7 @@ export const CashRegisterList: React.FC = () => {
             <EditEntryDialog
                 entry={editEntry}
                 onClose={() => setEditEntry(null)}
-                onSaved={handleEditSaved}
+                onSaved={() => { setEditEntry(null); load(); }}
             />
 
             <ManageDialog
@@ -582,9 +334,6 @@ export const CashRegisterList: React.FC = () => {
                 }}
             />
 
-            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>{snackbar.message}</Alert>
-            </Snackbar>
         </Stack>
     );
 };

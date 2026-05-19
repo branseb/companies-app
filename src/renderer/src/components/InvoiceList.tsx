@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useSnackbar } from "../hooks/useSnackbar";
 import {
     Alert,
     Box,
@@ -66,9 +67,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
     const [xmlInvoice, setXmlInvoice] = useState<EN16931Invoice | null>(null);
     const [xmlFormat, setXmlFormat] = useState("");
     const [xmlDialog, setXmlDialog] = useState(false);
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
-        open: false, message: "", severity: "success",
-    });
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
     useEffect(() => { loadInvoices(); }, [type, refresh, activeCompany]);
 
@@ -109,7 +108,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
             const filePath = await window.electron.pdf.download(activeConfigId!, id);
             window.electron.pdf.open(filePath);
         } catch (err) {
-            setSnackbar({ open: true, message: "Chyba pri generovaní PDF", severity: "error" });
+            showSnackbar("Chyba pri generovaní PDF", "error");
         } finally {
             setPdfLoading(null);
         }
@@ -161,7 +160,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
             const text = ev.target?.result as string;
             const result = parseInvoiceXML(text);
             if ("error" in result) {
-                setSnackbar({ open: true, message: result.error, severity: "error" });
+                showSnackbar(result.error, "error");
             } else {
                 setXmlInvoice(result.invoice);
                 setXmlFormat(result.format);
@@ -178,9 +177,9 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
             setXmlDialog(false);
             onAdd?.();
             loadInvoices();
-            setSnackbar({ open: true, message: "Faktúra importovaná", severity: "success" });
+            showSnackbar("Faktúra importovaná");
         } catch {
-            setSnackbar({ open: true, message: "Chyba pri importe faktúry", severity: "error" });
+            showSnackbar("Chyba pri importe faktúry", "error");
         }
     };
 
@@ -374,10 +373,8 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                 onConfirm={handleImport}
             />
 
-            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
-                    {snackbar.message}
-                </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={closeSnackbar}>
+                <Alert severity={snackbar.severity} onClose={closeSnackbar}>{snackbar.message}</Alert>
             </Snackbar>
         </Paper>
     );
