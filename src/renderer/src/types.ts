@@ -71,6 +71,10 @@ declare global {
 				export: (configId: string, companyId: number) => Promise<string>;
 			};
 
+			notification: {
+				show: (title: string, body: string) => Promise<void>;
+			};
+
 			invite: {
 				isConfigured: () => Promise<boolean>;
 				setup:        () => Promise<{ success: boolean; error?: string }>;
@@ -78,6 +82,9 @@ declare global {
 				setPortalUrl: (url: string) => Promise<void>;
 				create:       (companyId: string, companyName: string) => Promise<{ code: string; link: string }>;
 				list:         () => Promise<any[]>;
+				delete:       (inviteId: string) => Promise<void>;
+				revokeAccess: (uid: string) => Promise<void>;
+				deleteUser:   (uid: string) => Promise<void>;
 				getUser:      (uid: string) => Promise<{ email: string | null; displayName: string | null }>;
 			};
 		};

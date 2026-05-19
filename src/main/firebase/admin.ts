@@ -19,9 +19,9 @@ export function isFirebaseConfigured(): boolean {
 export function getPortalUrl(): string {
     try {
         const s = JSON.parse(fs.readFileSync(SETTINGS_PATH(), 'utf-8'))
-        return s.portalUrl || 'http://localhost:5175'
+        return s.portalUrl || 'https://e-companies-portal.vercel.app'
     } catch {
-        return 'http://localhost:5175'
+        return 'https://e-companies-portal.vercel.app'
     }
 }
 

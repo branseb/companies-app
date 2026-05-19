@@ -69,6 +69,10 @@ contextBridge.exposeInMainWorld("api", {
     export: (configId: string, companyId: number) => ipcRenderer.invoke("backup:export", configId, companyId),
   },
 
+  notification: {
+    show: (title: string, body: string) => ipcRenderer.invoke('notification:show', title, body),
+  },
+
   invite: {
     isConfigured: () => ipcRenderer.invoke("invite:isConfigured"),
     setup:        () => ipcRenderer.invoke("invite:setup"),
@@ -76,6 +80,9 @@ contextBridge.exposeInMainWorld("api", {
     setPortalUrl: (url: string) => ipcRenderer.invoke("invite:setPortalUrl", url),
     create:       (companyId: string, companyName: string) => ipcRenderer.invoke("invite:create", companyId, companyName),
     list:         () => ipcRenderer.invoke("invite:list"),
+    delete:       (inviteId: string) => ipcRenderer.invoke("invite:delete", inviteId),
+    revokeAccess: (uid: string) => ipcRenderer.invoke("invite:revokeAccess", uid),
+    deleteUser:   (uid: string) => ipcRenderer.invoke("invite:deleteUser", uid),
     getUser:      (uid: string) => ipcRenderer.invoke("invite:getUser", uid),
   },
 });

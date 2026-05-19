@@ -3,8 +3,9 @@ import {
     Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
     DialogTitle, Divider, IconButton, InputAdornment, Stack, Table,
     TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography,
+    Alert,
 } from "@mui/material";
-import { ContentCopy, Link, Refresh } from "@mui/icons-material";
+import { ContentCopy, Delete, Edit, Link, Refresh, Save } from "@mui/icons-material";
 
 type InviteStep = "idle" | "loading" | "link" | "error";
 
@@ -45,6 +46,17 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, onClose, compa
     const [portalUrl, setPortalUrl] = useState("");
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [userNames, setUserNames] = useState<Record<string, string>>({});
+    const [confirmRevoke, setConfirmRevoke] = useState<Invite | null>(null);
+    const [revoking, setRevoking] = useState(false);
+    const [editingUrl, setEditingUrl] = useState(false);
+    const [urlDraft, setUrlDraft] = useState("");
+
+    async function savePortalUrl() {
+        const url = urlDraft.trim().replace(/\/$/, "");
+        await window.api.invite.setPortalUrl(url);
+        setPortalUrl(url);
+        setEditingUrl(false);
+    }
 
     async function loadList() {
         setListLoading(true);
@@ -104,6 +116,31 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, onClose, compa
         setTimeout(() => setCopied(false), 2000);
     }
 
+    async function handleDelete(inv: Invite) {
+        if (inv.used && inv.usedByUid) {
+            setConfirmRevoke(inv);
+        } else {
+            await window.api.invite.delete(inv.id);
+            setInvites(prev => prev.filter(i => i.id !== inv.id));
+        }
+    }
+
+    async function handleRevokeConfirm(mode: 'suspend' | 'delete' | 'inviteOnly') {
+        if (!confirmRevoke) return;
+        setRevoking(true);
+        try {
+            if (confirmRevoke.usedByUid) {
+                if (mode === 'suspend') await window.api.invite.revokeAccess(confirmRevoke.usedByUid);
+                if (mode === 'delete')  await window.api.invite.deleteUser(confirmRevoke.usedByUid);
+            }
+            await window.api.invite.delete(confirmRevoke.id);
+            setInvites(prev => prev.filter(i => i.id !== confirmRevoke.id));
+            setConfirmRevoke(null);
+        } finally {
+            setRevoking(false);
+        }
+    }
+
     function copyInviteLink(inviteId: string) {
         navigator.clipboard.writeText(`${portalUrl}/invite/${inviteId}`);
         setCopiedId(inviteId);
@@ -115,9 +152,42 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, onClose, compa
             <DialogTitle>Pozvať firmu na portál</DialogTitle>
             <DialogContent>
                 {step === "idle" && (
-                    <Typography color="text.secondary">
-                        Vygeneruje sa jednorazový odkaz platný 7 dní. Firma sa ním zaregistruje na portáli.
-                    </Typography>
+                    <Stack gap={1.5}>
+                        <Typography color="text.secondary">
+                            Vygeneruje sa jednorazový odkaz platný 7 dní. Firma sa ním zaregistruje na portáli.
+                        </Typography>
+                        {editingUrl ? (
+                            <TextField
+                                size="small"
+                                label="URL portálu"
+                                value={urlDraft}
+                                onChange={e => setUrlDraft(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && savePortalUrl()}
+                                autoFocus
+                                fullWidth
+                                slotProps={{
+                                    input: {
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton size="small" onClick={savePortalUrl} color="primary">
+                                                    <Save fontSize="small" />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    },
+                                }}
+                            />
+                        ) : (
+                            <Stack direction="row" alignItems="center" gap={0.5}>
+                                <Typography variant="caption" color="text.secondary">
+                                    Portál: <strong>{portalUrl || "—"}</strong>
+                                </Typography>
+                                <IconButton size="small" onClick={() => { setUrlDraft(portalUrl); setEditingUrl(true); }}>
+                                    <Edit sx={{ fontSize: 14 }} />
+                                </IconButton>
+                            </Stack>
+                        )}
+                    </Stack>
                 )}
                 {step === "loading" && <Typography>Generujem odkaz…</Typography>}
                 {step === "link" && (
@@ -149,53 +219,144 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, onClose, compa
                     <>
                         <Divider sx={{ my: 2 }} />
                         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-                            <Typography variant="subtitle2" fontWeight={600}>Odoslané pozvánky</Typography>
+                            <Typography variant="subtitle2" fontWeight={600}>Portálový prístup</Typography>
                             <IconButton size="small" onClick={loadList} disabled={listLoading}>
                                 <Refresh fontSize="small" />
                             </IconButton>
                         </Stack>
                         {listLoading ? (
                             <CircularProgress size={20} />
-                        ) : (
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Vytvorená</TableCell>
-                                        <TableCell>Platná do</TableCell>
-                                        <TableCell>Stav</TableCell>
-                                        <TableCell>Prijal (UID)</TableCell>
-                                        <TableCell align="right" />
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {invites.map(inv => {
-                                        const status = inviteStatus(inv);
-                                        const isActive = !inv.used && !!inv.expiresAt && new Date(inv.expiresAt) > new Date();
-                                        return (
-                                            <TableRow key={inv.id}>
-                                                <TableCell>{fmtDate(inv.createdAt)}</TableCell>
-                                                <TableCell>{fmtDate(inv.expiresAt)}</TableCell>
-                                                <TableCell>
-                                                    <Chip size="small" label={status.label} color={status.color} />
-                                                </TableCell>
-                                                <TableCell sx={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                    {inv.usedByUid ? (userNames[inv.usedByUid] ?? inv.usedByUid) : "—"}
-                                                </TableCell>
-                                                <TableCell align="right">
-                                                    {isActive && portalUrl && (
-                                                        <Tooltip title={copiedId === inv.id ? "Skopírované!" : "Skopírovať odkaz"}>
-                                                            <IconButton size="small" onClick={() => copyInviteLink(inv.id)}>
-                                                                <ContentCopy fontSize="small" color={copiedId === inv.id ? "success" : "inherit"} />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        )}
+                        ) : (() => {
+                            const activeUsers = invites.filter(i => i.used);
+                            const otherInvites = invites.filter(i => !i.used);
+
+                            const renderActions = (inv: Invite) => {
+                                const isActive = !inv.used && !!inv.expiresAt && new Date(inv.expiresAt) > new Date();
+                                return (
+                                    <Stack direction="row" justifyContent="flex-end">
+                                        {isActive && portalUrl && (
+                                            <Tooltip title={copiedId === inv.id ? "Skopírované!" : "Skopírovať odkaz"}>
+                                                <IconButton size="small" onClick={() => copyInviteLink(inv.id)}>
+                                                    <ContentCopy fontSize="small" color={copiedId === inv.id ? "success" : "inherit"} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {isActive && confirmRevoke?.id !== inv.id && (
+                                            <Tooltip title="Zrušiť pozvánku">
+                                                <IconButton size="small" color="error" onClick={() => handleDelete(inv)}>
+                                                    <Delete fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {inv.used && confirmRevoke?.id !== inv.id && (
+                                            <Tooltip title="Zrušiť prístup">
+                                                <IconButton size="small" color="error" onClick={() => handleDelete(inv)}>
+                                                    <Delete fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        {!inv.used && !isActive && confirmRevoke?.id !== inv.id && (
+                                            <Tooltip title="Zmazať">
+                                                <IconButton size="small" color="error" onClick={() => handleDelete(inv)}>
+                                                    <Delete fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                    </Stack>
+                                );
+                            };
+
+                            return (
+                                <Stack gap={2}>
+                                    {activeUsers.length > 0 && (
+                                        <Stack gap={0.5}>
+                                            <Typography variant="caption" color="success.main" fontWeight={600} textTransform="uppercase">
+                                                Aktívni užívatelia
+                                            </Typography>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell>Užívateľ</TableCell>
+                                                        <TableCell>Pozvanka vytvorená</TableCell>
+                                                        <TableCell align="right" />
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {activeUsers.map(inv => (
+                                                        <TableRow key={inv.id}>
+                                                            <TableCell sx={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                                {inv.usedByUid ? (userNames[inv.usedByUid] ?? inv.usedByUid) : "—"}
+                                                            </TableCell>
+                                                            <TableCell>{fmtDate(inv.createdAt)}</TableCell>
+                                                            <TableCell align="right">{renderActions(inv)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </Stack>
+                                    )}
+
+                                    {otherInvites.length > 0 && (
+                                        <Stack gap={0.5}>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
+                                                Odoslané pozvánky
+                                            </Typography>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell>Vytvorená</TableCell>
+                                                        <TableCell>Platná do</TableCell>
+                                                        <TableCell>Stav</TableCell>
+                                                        <TableCell align="right" />
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {otherInvites.map(inv => {
+                                                        const status = inviteStatus(inv);
+                                                        return (
+                                                            <TableRow key={inv.id}>
+                                                                <TableCell>{fmtDate(inv.createdAt)}</TableCell>
+                                                                <TableCell>{fmtDate(inv.expiresAt)}</TableCell>
+                                                                <TableCell>
+                                                                    <Chip size="small" label={status.label} color={status.color} />
+                                                                </TableCell>
+                                                                <TableCell align="right">{renderActions(inv)}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </Stack>
+                                    )}
+                                </Stack>
+                            );
+                        })()}
+
+                    {confirmRevoke && (
+                        <Alert severity="warning" sx={{ mt: 2 }}>
+                            <Typography variant="body2" mb={1}>
+                                Chcete aj zrušiť prístup užívateľovi <strong>{userNames[confirmRevoke.usedByUid!] ?? confirmRevoke.usedByUid}</strong> na portál?
+                            </Typography>
+                            <Stack direction="row" gap={1} flexWrap="wrap">
+                                <Button size="small" variant="contained" color="error" disabled={revoking}
+                                    onClick={() => handleRevokeConfirm('suspend')}>
+                                    Pozastaviť prístup
+                                </Button>
+                                <Button size="small" variant="contained" color="error" disabled={revoking}
+                                    onClick={() => handleRevokeConfirm('delete')}>
+                                    Zmazať účet
+                                </Button>
+                                <Button size="small" variant="outlined" disabled={revoking}
+                                    onClick={() => handleRevokeConfirm('inviteOnly')}>
+                                    Len zmazať pozvánku
+                                </Button>
+                                <Button size="small" disabled={revoking}
+                                    onClick={() => setConfirmRevoke(null)}>
+                                    Zrušiť
+                                </Button>
+                            </Stack>
+                        </Alert>
+                    )}
                     </>
                 )}
             </DialogContent>

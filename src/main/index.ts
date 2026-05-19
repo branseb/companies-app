@@ -11,6 +11,7 @@ import { registerCashIpc } from './ipc/cash';
 import { registerAuditLogIpc } from './ipc/auditLog';
 import { registerBackupIpc } from './ipc/backup';
 import { registerInviteIpc } from './ipc/invite';
+import { registerNotificationsIpc } from './ipc/notifications';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -45,6 +46,7 @@ app.whenReady().then(async () => {
   registerAuditLogIpc();
   registerBackupIpc();
   registerInviteIpc();
+  registerNotificationsIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });

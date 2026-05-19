@@ -1,9 +1,36 @@
-import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
-import { Add } from "@mui/icons-material";
+import { Badge, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Add, Chat, Folder } from "@mui/icons-material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompany } from "../context/company";
+import { useFirebaseAuth } from "../context/firebaseAuth";
+import { useChat } from "../hooks/useChat";
+import { useNewDocuments } from "../hooks/useNewDocuments";
 import { CompaniesDialog } from "../components/companiesDialog";
+
+function CompanyCardBadges({ configId }: { configId: string }) {
+    const { fbUser } = useFirebaseAuth();
+    const { messages } = useChat(configId, "accountant", !!fbUser);
+    const docs = useNewDocuments(configId, !!fbUser);
+    const msgs = fbUser ? messages.filter(m => m.from === "company" && !m.readByAccountant).length : 0;
+
+    if (!fbUser || (msgs === 0 && docs === 0)) return null;
+
+    return (
+        <Stack direction="row" gap={1.5} position="absolute" right={16} top="50%" sx={{ transform: "translateY(-50%)" }}>
+            {msgs > 0 && (
+                <Badge badgeContent={msgs} color="error">
+                    <Chat fontSize="small" sx={{ color: "text.secondary" }} />
+                </Badge>
+            )}
+            {docs > 0 && (
+                <Badge badgeContent={docs} color="error">
+                    <Folder fontSize="small" sx={{ color: "text.secondary" }} />
+                </Badge>
+            )}
+        </Stack>
+    );
+}
 
 export const SelectCompanyPage = () => {
     const { companyConfigs, configsLoaded, selectConfig } = useCompany();
@@ -62,9 +89,10 @@ export const SelectCompanyPage = () => {
                         <Typography variant="body2" color="text.secondary" noWrap>
                             {(() => { try { return new URL(c.connectionString).hostname; } catch { return c.connectionString; } })()}
                         </Typography>
-                        {connecting === c.id && (
-                            <CircularProgress size={18} sx={{ position: "absolute", right: 16, top: "50%", mt: "-9px" }} />
-                        )}
+                        {connecting === c.id
+                            ? <CircularProgress size={18} sx={{ position: "absolute", right: 16, top: "50%", mt: "-9px" }} />
+                            : <CompanyCardBadges configId={c.id} />
+                        }
                     </Box>
                 ))}
 

@@ -71,6 +71,18 @@ export const registerInviteIpc = () => {
         })
     })
 
+    handle('invite:delete', async (inviteId: string) => {
+        await adminDb().collection('invites').doc(inviteId).delete()
+    })
+
+    handle('invite:revokeAccess', async (uid: string) => {
+        await adminAuth().updateUser(uid, { disabled: true })
+    })
+
+    handle('invite:deleteUser', async (uid: string) => {
+        await adminAuth().deleteUser(uid)
+    })
+
     handle('invite:getUser', async (uid: string) => {
         try {
             const user = await adminAuth().getUser(uid)

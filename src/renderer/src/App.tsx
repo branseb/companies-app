@@ -1,16 +1,61 @@
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import { Close, DarkMode, LightMode, Minimize, Terminal } from "@mui/icons-material";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { useCompany } from "./context/company";
 import { useThemeMode } from "./context/theme";
+import { useFirebaseAuth } from "./context/firebaseAuth";
+import { useChat } from "./hooks/useChat";
+import { useNewDocuments } from "./hooks/useNewDocuments";
 import { SelectCompanyPage } from "./pages/SelectCompanyPage";
 import { CompanyDashboard } from "./pages/CompanyDashboard";
+
+function CompanyNotificationListener({ configId, companyName }: { configId: string; companyName: string }) {
+    const { messages } = useChat(configId, "accountant", true);
+    const newDocs = useNewDocuments(configId, true);
+    const unread = messages.filter(m => m.from === "company" && !m.readByAccountant).length;
+
+    const prevUnread = useRef<number | null>(null);
+    const prevDocs   = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (prevUnread.current === null) { prevUnread.current = unread; return; }
+        if (unread > prevUnread.current)
+            window.api.notification.show("Nová správa", `${companyName} poslala správu`);
+        prevUnread.current = unread;
+    }, [unread]);
+
+    useEffect(() => {
+        if (prevDocs.current === null) { prevDocs.current = newDocs; return; }
+        if (newDocs > prevDocs.current)
+            window.api.notification.show("Nový dokument", `${companyName} nahrala nový dokument`);
+        prevDocs.current = newDocs;
+    }, [newDocs]);
+
+    return null;
+}
+
+function NotificationListener() {
+    const { companyConfigs } = useCompany();
+    const { fbUser } = useFirebaseAuth();
+
+    if (!fbUser) return null;
+
+    return (
+        <>
+            {companyConfigs.map(c => (
+                <CompanyNotificationListener key={c.id} configId={c.id} companyName={c.name} />
+            ))}
+        </>
+    );
+}
 
 const App = () => {
 	const { activeCompany, activeConfigId } = useCompany();
 
 	return (
 		<Stack height="100vh" width="100vw" overflow="hidden">
+			<NotificationListener />
 			<WindowBar />
 			<Routes>
 				<Route path="/" element={
