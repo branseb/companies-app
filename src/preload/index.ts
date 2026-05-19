@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld("api", {
     setPortalUrl: (url: string) => ipcRenderer.invoke("invite:setPortalUrl", url),
     create:       (companyId: string, companyName: string) => ipcRenderer.invoke("invite:create", companyId, companyName),
     list:         () => ipcRenderer.invoke("invite:list"),
+    getUser:      (uid: string) => ipcRenderer.invoke("invite:getUser", uid),
   },
 });
 

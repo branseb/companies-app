@@ -78,6 +78,7 @@ declare global {
 				setPortalUrl: (url: string) => Promise<void>;
 				create:       (companyId: string, companyName: string) => Promise<{ code: string; link: string }>;
 				list:         () => Promise<any[]>;
+				getUser:      (uid: string) => Promise<{ email: string | null; displayName: string | null }>;
 			};
 		};
 		electron: {

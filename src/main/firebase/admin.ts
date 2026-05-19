@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { getAuth } from 'firebase-admin/auth'
 import { app as electronApp } from 'electron'
 import path from 'path'
 import fs from 'fs'
@@ -40,6 +41,11 @@ function ensureInitialized(): void {
 export function adminDb() {
     ensureInitialized()
     return getFirestore()
+}
+
+export function adminAuth() {
+    ensureInitialized()
+    return getAuth()
 }
 
 export { FieldValue, Timestamp }

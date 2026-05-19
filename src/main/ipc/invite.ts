@@ -3,7 +3,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 import { handle } from './ipcHandle'
 import {
-    isFirebaseConfigured, adminDb, getPortalUrl, setPortalUrl,
+    isFirebaseConfigured, adminDb, adminAuth, getPortalUrl, setPortalUrl,
     SERVICE_ACCOUNT_PATH, FieldValue, Timestamp,
 } from '../firebase/admin'
 
@@ -57,6 +57,26 @@ export const registerInviteIpc = () => {
     handle('invite:list', async () => {
         const db = adminDb()
         const snap = await db.collection('invites').orderBy('createdAt', 'desc').limit(20).get()
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        return snap.docs.map(d => {
+            const data = d.data()
+            return {
+                id:          d.id,
+                companyId:   data.companyId,
+                companyName: data.companyName,
+                used:        data.used,
+                usedByUid:   data.usedByUid ?? null,
+                createdAt:   data.createdAt?.toDate().toISOString() ?? null,
+                expiresAt:   data.expiresAt?.toDate().toISOString() ?? null,
+            }
+        })
+    })
+
+    handle('invite:getUser', async (uid: string) => {
+        try {
+            const user = await adminAuth().getUser(uid)
+            return { email: user.email ?? null, displayName: user.displayName ?? null }
+        } catch {
+            return { email: null, displayName: null }
+        }
     })
 }

@@ -6,6 +6,7 @@ import {
 } from "@mui/icons-material";
 import { useFirebaseAuth } from "../context/firebaseAuth";
 import { useChat } from "../hooks/useChat";
+import { useNewDocuments } from "../hooks/useNewDocuments";
 import type { SvgIconComponent } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,7 +19,7 @@ import { InviteDialog } from "../components/InviteDialog";
 
 // ─── Tiles ────────────────────────────────────────────────────────────────────
 
-interface Tile { label: string; icon: SvgIconComponent; color: string; page: string; }
+interface Tile { label: string; icon: SvgIconComponent; color: string; page: string; badgeCount?: number; }
 
 const tiles: Tile[] = [
     { label: "Vytvoriť faktúru",  icon: NoteAdd,       color: "#1976d2", page: "new-invoice"       },
@@ -72,6 +73,8 @@ export const CompanyHome = () => {
     const { fbUser } = useFirebaseAuth();
     const { messages } = useChat(activeConfigId ?? "", "accountant", !!fbUser);
     const unread = fbUser ? messages.filter(m => m.from === "company" && !m.readByAccountant).length : 0;
+    const newDocs = useNewDocuments(activeConfigId ?? "", !!fbUser);
+    const badgeCounts: Record<string, number> = { documents: newDocs };
 
     const handleBackup = async () => {
         if (!activeCompany?.id) return;
@@ -276,7 +279,9 @@ export const CompanyHome = () => {
                                     transition: "filter 0.15s",
                                 }}
                             >
+                                <Badge badgeContent={badgeCounts[tile.page] ?? 0} color="error">
                                 <Icon sx={{ fontSize: 42 }} />
+                            </Badge>
                                 <Typography variant="h6" fontWeight={600} fontSize={15}>{tile.label}</Typography>
                             </Box>
                         </Grid>
