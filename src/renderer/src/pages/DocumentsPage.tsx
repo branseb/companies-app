@@ -7,48 +7,47 @@ import {
 import { CloudUpload, Download, Delete, CheckCircle } from '@mui/icons-material'
 import {
   collection, addDoc, onSnapshot, orderBy, query,
-  serverTimestamp, doc, updateDoc, deleteDoc,
+  serverTimestamp, doc, updateDoc, deleteDoc, getDocs, setDoc,
 } from 'firebase/firestore'
-import {
-  ref, uploadBytesResumable, getDownloadURL, deleteObject,
-} from 'firebase/storage'
-import { db, storage } from '../firebase/config'
+import { db } from '../firebase/config'
 
-type DocumentType   = 'invoice' | 'bank_statement' | 'travel' | 'other'
+type DocumentType = 'invoice' | 'bank_statement' | 'travel' | 'other'
 type DocumentStatus = 'uploaded' | 'downloaded' | 'processed'
 
 interface CompanyDocument {
-  id:          string
-  fileName:    string
-  storagePath: string
-  type:        DocumentType
-  status:      DocumentStatus
-  uploadedAt:  Date
-  uploadedBy:  'company' | 'accountant'
-  note?:       string
-  sizeBytes:   number
+  id: string
+  fileName: string
+  type: DocumentType
+  status: DocumentStatus
+  uploadedAt: Date
+  uploadedBy: 'company' | 'accountant'
+  note?: string
+  sizeBytes: number
   contentType?: string
+  totalChunks: number
 }
 
 const TYPE_LABELS: Record<DocumentType, string> = {
-  invoice:       'Faktúra',
-  bank_statement:'Výpis z účtu',
-  travel:        'Cestovné',
-  other:         'Ostatné',
+  invoice: 'Faktúra',
+  bank_statement: 'Výpis z účtu',
+  travel: 'Cestovné',
+  other: 'Ostatné',
 }
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success'> = {
-  uploaded:  'warning',
-  downloaded:'default',
+  uploaded: 'warning',
+  downloaded: 'default',
   processed: 'success',
 }
 const STATUS_LABEL: Record<string, string> = {
-  uploaded:  'Nahraté',
-  downloaded:'Stiahnuté',
+  uploaded: 'Nahraté',
+  downloaded: 'Stiahnuté',
   processed: 'Spracované',
 }
 
+const CHUNK_SIZE = 700_000 // ~700 KB base64 chars per Firestore doc (~525 KB binary)
+
 function fmtSize(bytes: number) {
-  if (bytes < 1024)        return `${bytes} B`
+  if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
@@ -56,9 +55,28 @@ function fmtDate(d: Date) {
   return d.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function base64ToBlob(base64: string, contentType: string): Blob {
+  const byteChars = atob(base64)
+  const byteArrays: BlobPart[] = []
+  for (let i = 0; i < byteChars.length; i += 1024) {
+    const slice = byteChars.slice(i, i + 1024)
+    byteArrays.push(new Uint8Array(Array.from(slice).map(c => c.charCodeAt(0))))
+  }
+  return new Blob(byteArrays, { type: contentType || 'application/octet-stream' })
+}
+
 export function DocumentsPage({ companyId }: { companyId: string }) {
   const [documents, setDocuments] = useState<CompanyDocument[]>([])
-  const [loading, setLoading]     = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!companyId) return
@@ -69,16 +87,16 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
     return onSnapshot(q,
       snap => {
         setDocuments(snap.docs.map(d => ({
-          id:          d.id,
-          fileName:    d.data().fileName,
-          storagePath: d.data().storagePath,
-          type:        d.data().type,
-          status:      d.data().status,
-          uploadedAt:  d.data().uploadedAt?.toDate() ?? new Date(),
-          uploadedBy:  d.data().uploadedBy,
-          note:        d.data().note,
-          sizeBytes:   d.data().sizeBytes,
+          id: d.id,
+          fileName: d.data().fileName,
+          type: d.data().type,
+          status: d.data().status,
+          uploadedAt: d.data().uploadedAt?.toDate() ?? new Date(),
+          uploadedBy: d.data().uploadedBy,
+          note: d.data().note,
+          sizeBytes: d.data().sizeBytes,
           contentType: d.data().contentType,
+          totalChunks: d.data().totalChunks ?? 0,
         })))
         setLoading(false)
       },
@@ -86,46 +104,61 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
     )
   }, [companyId])
 
-  const fileInputRef              = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
-  const [progress, setProgress]   = useState(0)
-  const [selType, setSelType]     = useState<DocumentType>('other')
-  const [downloading, setDl]      = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
+  const [selType, setSelType] = useState<DocumentType>('other')
+  const [downloading, setDl] = useState<string | null>(null)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true); setProgress(0)
     try {
+      const base64 = await fileToBase64(file)
+
+      const chunks: string[] = []
+      for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
+        chunks.push(base64.slice(i, i + CHUNK_SIZE))
+      }
+
       const docRef = await addDoc(collection(db, 'companies', companyId, 'documents'), {
-        fileName:    file.name,
-        storagePath: '',
-        type:        selType,
-        status:      'uploaded',
-        uploadedAt:  serverTimestamp(),
-        uploadedBy:  'accountant',
-        note:        '',
-        sizeBytes:   file.size,
+        fileName: file.name,
+        type: selType,
+        status: 'uploaded',
+        uploadedAt: serverTimestamp(),
+        uploadedBy: 'accountant',
+        note: '',
+        sizeBytes: file.size,
         contentType: file.type,
+        totalChunks: chunks.length,
       })
-      const path = `companies/${companyId}/documents/${docRef.id}_${file.name}`
-      const task = uploadBytesResumable(ref(storage, path), file)
-      await new Promise<void>((res, rej) => {
-        task.on('state_changed', s => setProgress(Math.round(s.bytesTransferred / s.totalBytes * 100)), rej, res)
-      })
-      await updateDoc(docRef, { storagePath: path })
+
+      const chunksCol = collection(db, 'companies', companyId, 'documents', docRef.id, 'chunks')
+      for (let i = 0; i < chunks.length; i++) {
+        await setDoc(doc(chunksCol, String(i)), { index: i, data: chunks[i] })
+        setProgress(Math.round((i + 1) / chunks.length * 100))
+      }
     } finally {
       setUploading(false); setProgress(0); e.target.value = ''
     }
   }
 
-  async function handleDownload(docId: string, storagePath: string, fileName: string) {
-    setDl(docId)
+  async function handleDownload(d: CompanyDocument) {
+    setDl(d.id)
     try {
-      const url = await getDownloadURL(ref(storage, storagePath))
-      await updateDoc(doc(db, 'companies', companyId, 'documents', docId), { status: 'downloaded' })
+      const chunksCol = collection(db, 'companies', companyId, 'documents', d.id, 'chunks')
+      const snap = await getDocs(query(chunksCol, orderBy('index', 'asc')))
+
+      const base64 = snap.docs.map(s => s.data().data as string).join('')
+      const blob = base64ToBlob(base64, d.contentType ?? '')
+      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = fileName; a.target = '_blank'; a.click()
+      a.href = url; a.download = d.fileName; a.click()
+      URL.revokeObjectURL(url)
+
+      await updateDoc(doc(db, 'companies', companyId, 'documents', d.id), { status: 'downloaded' })
+      await Promise.all(snap.docs.map(s => deleteDoc(s.ref)))
     } finally {
       setDl(null)
     }
@@ -135,8 +168,10 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
     await updateDoc(doc(db, 'companies', companyId, 'documents', docId), { status: 'processed' })
   }
 
-  async function handleDelete(docId: string, storagePath: string) {
-    if (storagePath) await deleteObject(ref(storage, storagePath)).catch(() => {})
+  async function handleDelete(docId: string) {
+    const chunksCol = collection(db, 'companies', companyId, 'documents', docId, 'chunks')
+    const snap = await getDocs(chunksCol)
+    await Promise.all(snap.docs.map(s => deleteDoc(s.ref)))
     await deleteDoc(doc(db, 'companies', companyId, 'documents', docId))
   }
 
@@ -215,12 +250,12 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" justifyContent="flex-end" gap={0.5}>
-                      <Tooltip title="Stiahnuť">
+                      <Tooltip title={d.status === 'uploaded' ? 'Stiahnuť' : 'Súbor už bol stiahnutý'}>
                         <span>
                           <IconButton
                             size="small"
-                            onClick={() => handleDownload(d.id, d.storagePath, d.fileName)}
-                            disabled={downloading === d.id || !d.storagePath}
+                            onClick={() => handleDownload(d)}
+                            disabled={downloading === d.id || d.status !== 'uploaded'}
                           >
                             {downloading === d.id ? <CircularProgress size={16} /> : <Download fontSize="small" />}
                           </IconButton>
@@ -234,7 +269,7 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
                         </Tooltip>
                       )}
                       <Tooltip title="Vymazať">
-                        <IconButton size="small" onClick={() => handleDelete(d.id, d.storagePath)} color="error">
+                        <IconButton size="small" onClick={() => handleDelete(d.id)} color="error">
                           <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
