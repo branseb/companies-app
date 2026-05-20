@@ -99,4 +99,10 @@ contextBridge.exposeInMainWorld("electron", {
     download: (configId: string, invoiceId: string) => ipcRenderer.invoke("pdf:download", configId, invoiceId),
     open: (filePath: string) => ipcRenderer.send("pdf:open", filePath),
   },
+  document: {
+    save:              (fileName: string, base64: string, docType: string, companyName: string) => ipcRenderer.invoke("document:save", fileName, base64, docType, companyName),
+    getFolder:         ()                  => ipcRenderer.invoke("document:getFolder"),
+    setFolder:         ()                  => ipcRenderer.invoke("document:setFolder"),
+    openCompanyFolder: (companyName: string) => ipcRenderer.invoke("document:openCompanyFolder", companyName),
+  },
 });

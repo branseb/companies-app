@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Box, Button, Chip, CircularProgress, IconButton, LinearProgress,
+  Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  DialogContentText, DialogTitle, IconButton, LinearProgress,
   MenuItem, Paper, Select, Stack, Table, TableBody, TableCell,
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material'
-import { CloudUpload, Download, Delete, CheckCircle } from '@mui/icons-material'
+import { CloudUpload, Download, Delete, CheckCircle, FolderOpen, DownloadForOffline, OpenInNew, SettingsOutlined } from '@mui/icons-material'
 import {
   collection, addDoc, onSnapshot, orderBy, query,
   serverTimestamp, doc, updateDoc, deleteDoc, getDocs, setDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { useCompany } from '../context/company'
 
 type DocumentType = 'invoice' | 'bank_statement' | 'travel' | 'other'
 type DocumentStatus = 'uploaded' | 'downloaded' | 'processed'
@@ -64,17 +66,9 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-function base64ToBlob(base64: string, contentType: string): Blob {
-  const byteChars = atob(base64)
-  const byteArrays: BlobPart[] = []
-  for (let i = 0; i < byteChars.length; i += 1024) {
-    const slice = byteChars.slice(i, i + 1024)
-    byteArrays.push(new Uint8Array(Array.from(slice).map(c => c.charCodeAt(0))))
-  }
-  return new Blob(byteArrays, { type: contentType || 'application/octet-stream' })
-}
 
 export function DocumentsPage({ companyId }: { companyId: string }) {
+  const { activeCompany } = useCompany()
   const [documents, setDocuments] = useState<CompanyDocument[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -109,6 +103,19 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
   const [progress, setProgress] = useState(0)
   const [selType, setSelType] = useState<DocumentType>('other')
   const [downloading, setDl] = useState<string | null>(null)
+  const [confirmDelete, setConfirm] = useState<{ docId: string; fileName: string } | null>(null)
+  const [confirmDeleteAll, setConfirmAll] = useState(false)
+  const [dlAllProgress, setDlAllProg] = useState<{ done: number; total: number } | null>(null)
+  const [folder, setFolder] = useState<string>('')
+
+  useEffect(() => {
+    window.electron.document.getFolder().then(setFolder)
+  }, [])
+
+  async function handleChangeFolder() {
+    const selected = await window.electron.document.setFolder()
+    if (selected) setFolder(selected)
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -144,6 +151,21 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
     }
   }
 
+  async function handleDeleteAllDownloaded() {
+    const done = documents.filter(d => d.status !== 'uploaded')
+    for (const d of done) await handleDelete(d.id)
+  }
+
+  async function handleDownloadAll() {
+    const pending = documents.filter(d => d.status === 'uploaded')
+    setDlAllProg({ done: 0, total: pending.length })
+    for (let i = 0; i < pending.length; i++) {
+      await handleDownload(pending[i])
+      setDlAllProg({ done: i + 1, total: pending.length })
+    }
+    setDlAllProg(null)
+  }
+
   async function handleDownload(d: CompanyDocument) {
     setDl(d.id)
     try {
@@ -151,11 +173,7 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
       const snap = await getDocs(query(chunksCol, orderBy('index', 'asc')))
 
       const base64 = snap.docs.map(s => s.data().data as string).join('')
-      const blob = base64ToBlob(base64, d.contentType ?? '')
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = d.fileName; a.click()
-      URL.revokeObjectURL(url)
+      await window.electron.document.save(d.fileName, base64, d.type, activeCompany?.name ?? 'Neznáma firma')
 
       await updateDoc(doc(db, 'companies', companyId, 'documents', d.id), { status: 'downloaded' })
       await Promise.all(snap.docs.map(s => deleteDoc(s.ref)))
@@ -181,7 +199,7 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
 
   return (
     <Box>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
         <Typography variant="h6" fontWeight={700}>Dokumenty firmy</Typography>
         <Stack direction="row" gap={1} alignItems="center">
           <Select
@@ -205,6 +223,56 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
             {uploading ? `${progress}%` : 'Nahrať'}
           </Button>
           <input ref={fileInputRef} type="file" hidden onChange={handleFileChange} />
+        </Stack>
+      </Stack>
+
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+        <Stack direction="row" gap={1} alignItems="center">
+          <Tooltip title={`Priečinok sťahovania: ${folder}`}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<SettingsOutlined fontSize="small" />}
+              onClick={handleChangeFolder}
+              sx={{ color: 'text.secondary', textTransform: 'none' }}
+            >
+              {folder ? folder.split(/[\\/]/).pop() : '…'}
+            </Button>
+          </Tooltip>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<OpenInNew fontSize="small" />}
+            onClick={() => window.electron.document.openCompanyFolder(activeCompany?.name ?? 'Neznáma firma')}
+            sx={{ textTransform: 'none' }}
+          >
+            {activeCompany?.name ?? 'Priečinok firmy'}
+          </Button>
+        </Stack>
+        <Stack direction="row" gap={1} alignItems="center">
+          {documents.some(d => d.status === 'uploaded') && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="success"
+              startIcon={dlAllProgress ? <CircularProgress size={14} color="inherit" /> : <DownloadForOffline />}
+              onClick={handleDownloadAll}
+              disabled={!!dlAllProgress}
+            >
+              {dlAllProgress ? `${dlAllProgress.done}/${dlAllProgress.total}` : 'Stiahnuť všetky'}
+            </Button>
+          )}
+          {documents.some(d => d.status !== 'uploaded') && (
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              startIcon={<Delete />}
+              onClick={() => setConfirmAll(true)}
+            >
+              Zmazať stiahnuté
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -261,7 +329,7 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
                           </IconButton>
                         </span>
                       </Tooltip>
-                      {d.status !== 'processed' && (
+                      {d.status === 'downloaded' && (
                         <Tooltip title="Označiť ako spracované">
                           <IconButton size="small" onClick={() => handleMarkProcessed(d.id)}>
                             <CheckCircle fontSize="small" color="success" />
@@ -269,7 +337,14 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
                         </Tooltip>
                       )}
                       <Tooltip title="Vymazať">
-                        <IconButton size="small" onClick={() => handleDelete(d.id)} color="error">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => d.status === 'uploaded'
+                            ? setConfirm({ docId: d.id, fileName: d.fileName })
+                            : handleDelete(d.id)
+                          }
+                        >
                           <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -281,6 +356,45 @@ export function DocumentsPage({ companyId }: { companyId: string }) {
           </Table>
         </Paper>
       )}
+      <Dialog open={confirmDeleteAll} onClose={() => setConfirmAll(false)}>
+        <DialogTitle>Zmazať všetky stiahnuté záznamy?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Budú vymazané všetky záznamy so stavom <strong>Stiahnuté</strong> a <strong>Spracované</strong> ({documents.filter(d => d.status !== 'uploaded').length} záznamov).
+            Samotné súbory ostanú na disku.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmAll(false)}>Zrušiť</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => { handleDeleteAllDownloaded(); setConfirmAll(false) }}
+          >
+            Zmazať
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!confirmDelete} onClose={() => setConfirm(null)}>
+        <DialogTitle>Vymazať nestiahnutý súbor?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Súbor <strong>{confirmDelete?.fileName}</strong> ešte nebol stiahnutý.
+            Po vymazaní bude nenávratne stratený.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirm(null)}>Zrušiť</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => { handleDelete(confirmDelete!.docId); setConfirm(null) }}
+          >
+            Vymazať
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

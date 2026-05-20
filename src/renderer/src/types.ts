@@ -100,6 +100,12 @@ declare global {
 				download: (configId: string, invoiceId: string) => Promise<string>;
 				open: (filePath: string) => void;
 			};
+			document: {
+				save:              (fileName: string, base64: string, docType: string, companyName: string) => Promise<string>;
+				getFolder:         () => Promise<string>;
+				setFolder:         () => Promise<string | null>;
+				openCompanyFolder: (companyName: string) => Promise<void>;
+			};
 		};
 	}
 }
