@@ -10,13 +10,17 @@ import { useNewDocuments } from "./hooks/useNewDocuments";
 import { SelectCompanyPage } from "./pages/SelectCompanyPage";
 import { CompanyDashboard } from "./pages/CompanyDashboard";
 
+// Module-level state survives React remounts and HMR
+const _seenIds:   Map<string, Set<string>> = new Map()
+const _timers:    Map<string, ReturnType<typeof setTimeout>> = new Map()
+const _lastNotif: Map<string, number> = new Map()
+
 function CompanyNotificationListener({ configId, companyName }: { configId: string; companyName: string }) {
     const { messages } = useChat(configId, "accountant", true);
-    const newDocs = useNewDocuments(configId, true);
+    const docIds = useNewDocuments(configId, true);
     const unread = messages.filter(m => m.from === "company" && !m.readByAccountant).length;
 
     const prevUnread = useRef<number | null>(null);
-    const prevDocs   = useRef<number | null>(null);
 
     useEffect(() => {
         if (prevUnread.current === null) { prevUnread.current = unread; return; }
@@ -26,11 +30,34 @@ function CompanyNotificationListener({ configId, companyName }: { configId: stri
     }, [unread]);
 
     useEffect(() => {
-        if (prevDocs.current === null) { prevDocs.current = newDocs; return; }
-        if (newDocs > prevDocs.current)
-            window.api.notification.show("Nový dokument", `${companyName} nahrala nový dokument`);
-        prevDocs.current = newDocs;
-    }, [newDocs]);
+        if (docIds === null) return; // not yet loaded — establish baseline on first snapshot
+
+        if (!_seenIds.has(configId)) {
+            // First load: remember all existing IDs as baseline, no notification
+            _seenIds.set(configId, new Set(docIds));
+            return;
+        }
+
+        const seen = _seenIds.get(configId)!;
+        const newOnes = docIds.filter(id => !seen.has(id));
+        docIds.forEach(id => seen.add(id));
+
+        if (newOnes.length === 0) return;
+
+        // Debounce: reset timer on each new document
+        const existing = _timers.get(configId);
+        if (existing) clearTimeout(existing);
+
+        const t = setTimeout(() => {
+            _timers.delete(configId);
+            const last = _lastNotif.get(configId) ?? 0;
+            if (Date.now() - last >= 30_000) {
+                _lastNotif.set(configId, Date.now());
+                window.api.notification.show("Nové dokumenty", `${companyName} nahrala nové dokumenty`);
+            }
+        }, 3_000);
+        _timers.set(configId, t);
+    }, [docIds, configId]);
 
     return null;
 }

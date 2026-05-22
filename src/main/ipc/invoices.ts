@@ -110,6 +110,24 @@ export const registerInvoiceIpc = () => {
         return Array.from(map.values());
     });
 
+    handle("invoice:next-df-id", async (configId: string) => {
+        const db = await dbManager.getDB(configId);
+        const repo = db.getRepository(Invoice);
+        const year = new Date().getFullYear().toString();
+        const prefix = `DF${year}`;
+        const invoices = await repo.find({ select: ["invoiceNumber"] });
+        const numbers = invoices
+            .map(inv => inv.invoiceNumber)
+            .filter(Boolean)
+            .filter(num => num.startsWith(prefix))
+            .map(num => {
+                const match = num.match(/^DF\d{4}(\d{4})$/);
+                return match ? parseInt(match[1], 10) : 0;
+            });
+        const next = (numbers.length ? Math.max(...numbers) : 0) + 1;
+        return `${prefix}${String(next).padStart(4, '0')}`;
+    });
+
     handle("invoice:next-id", async (configId: string, supplierIco: string) => {
         const db = await dbManager.getDB(configId);
 

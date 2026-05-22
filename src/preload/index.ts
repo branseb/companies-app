@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("api", {
     knownParties: (configId: string) => ipcRenderer.invoke("invoice:known-parties", configId),
     get: (configId: string, id: string) => ipcRenderer.invoke("invoice:get", configId, id),
     nextId: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:next-id", configId, supplierIco),
+    nextDfId: (configId: string) => ipcRenderer.invoke("invoice:next-df-id", configId),
     markPaid: (configId: string, id: number, paid: boolean) => ipcRenderer.invoke("invoice:mark-paid", configId, id, paid),
     delete: (configId: string, id: number) => ipcRenderer.invoke("invoice:delete", configId, id),
   },
@@ -104,5 +105,8 @@ contextBridge.exposeInMainWorld("electron", {
     getFolder:         ()                  => ipcRenderer.invoke("document:getFolder"),
     setFolder:         ()                  => ipcRenderer.invoke("document:setFolder"),
     openCompanyFolder: (companyName: string) => ipcRenderer.invoke("document:openCompanyFolder", companyName),
+    readFile:          (filePath: string)       => ipcRenderer.invoke("document:readFile", filePath),
+    parseInvoice:      (base64: string)         => ipcRenderer.invoke("document:parseInvoice", base64),
+
   },
 });

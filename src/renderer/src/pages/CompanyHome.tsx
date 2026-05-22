@@ -74,7 +74,7 @@ export const CompanyHome = () => {
     const { messages } = useChat(activeConfigId ?? "", "accountant", !!fbUser);
     const unread = fbUser ? messages.filter(m => m.from === "company" && !m.readByAccountant).length : 0;
     const newDocs = useNewDocuments(activeConfigId ?? "", !!fbUser);
-    const badgeCounts: Record<string, number> = { documents: newDocs };
+    const badgeCounts: Record<string, number> = { documents: newDocs?.length ?? 0 };
 
     const handleBackup = async () => {
         if (!activeCompany?.id) return;

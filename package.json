@@ -25,15 +25,18 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
+    "@types/pdf-parse": "^1.1.5",
     "fast-xml-parser": "^5.7.2",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
     "jspdf": "^2.5.1",
     "mssql": "^10.0.4",
+    "pdf-parse": "^1.1.1",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "react-pdf": "^10.4.1",
     "react-router-dom": "^7.15.0",
     "typeorm": "^0.3.20"
   }

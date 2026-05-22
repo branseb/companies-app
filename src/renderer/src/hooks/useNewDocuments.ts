@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
-export function useNewDocuments(companyId: string, enabled = true): number {
-  const [count, setCount] = useState(0)
+export function useNewDocuments(companyId: string, enabled = true): string[] | null {
+  const [ids, setIds] = useState<string[] | null>(null)
 
   useEffect(() => {
     if (!companyId || !enabled) return
@@ -14,8 +14,8 @@ export function useNewDocuments(companyId: string, enabled = true): number {
       where('status', '==', 'uploaded'),
     )
 
-    return onSnapshot(q, snap => setCount(snap.size), () => setCount(0))
+    return onSnapshot(q, snap => setIds(snap.docs.map(d => d.id)), () => setIds([]))
   }, [companyId, enabled])
 
-  return count
+  return ids
 }

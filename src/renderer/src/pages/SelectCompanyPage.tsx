@@ -14,7 +14,8 @@ function CompanyCardBadges({ configId }: { configId: string }) {
     const docs = useNewDocuments(configId, !!fbUser);
     const msgs = fbUser ? messages.filter(m => m.from === "company" && !m.readByAccountant).length : 0;
 
-    if (!fbUser || (msgs === 0 && docs === 0)) return null;
+    const docsCount = docs?.length ?? 0;
+    if (!fbUser || (msgs === 0 && docsCount === 0)) return null;
 
     return (
         <Stack direction="row" gap={1.5} position="absolute" right={16} top="50%" sx={{ transform: "translateY(-50%)" }}>
@@ -23,8 +24,8 @@ function CompanyCardBadges({ configId }: { configId: string }) {
                     <Chat fontSize="small" sx={{ color: "text.secondary" }} />
                 </Badge>
             )}
-            {docs > 0 && (
-                <Badge badgeContent={docs} color="error">
+            {docsCount > 0 && (
+                <Badge badgeContent={docsCount} color="error">
                     <Folder fontSize="small" sx={{ color: "text.secondary" }} />
                 </Badge>
             )}

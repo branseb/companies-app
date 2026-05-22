@@ -9,6 +9,7 @@ declare global {
 				update: (configId: string, id: number, data: any) => Promise<void>;
 				get: (configId: string, id: string) => Promise<any>;
 				nextId: (configId: string, supplierIco: string) => Promise<string>;
+				nextDfId: (configId: string) => Promise<string>;
 				byCompany: (configId: string, ico: string) => Promise<any[]>;
 				byCustomer: (configId: string, ico: string) => Promise<any[]>;
 				knownParties: (configId: string) => Promise<any[]>;
@@ -105,6 +106,20 @@ declare global {
 				getFolder:         () => Promise<string>;
 				setFolder:         () => Promise<string | null>;
 				openCompanyFolder: (companyName: string) => Promise<void>;
+				readFile:          (filePath: string) => Promise<string>;
+
+				parseInvoice:      (base64: string) => Promise<{
+					invoiceNumber: string; issueDate: string; dueDate: string; deliveryDate?: string;
+					currency: string;
+					supplierName: string; supplierIco: string; supplierDic: string; supplierIcDph: string;
+					supplierAddress?: string; supplierZip?: string; supplierCity?: string;
+					customerName: string; customerIco: string; customerDic: string;
+					customerAddress?: string; customerZip?: string; customerCity?: string;
+					totalAmount: number; vatAmount: number; taxRate: number;
+					parsedItems?: Array<{ description: string; quantity: number; unit?: string; unitPrice: number; taxRate: number }>;
+					_rawText?: string;
+					_source?: 'isdoc' | 'regex';
+				}>;
 			};
 		};
 	}
