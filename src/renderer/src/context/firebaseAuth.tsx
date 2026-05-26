@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { type User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
-interface FirebaseAuthContextValue {
+type FirebaseAuthContextValue = {
   fbUser: User | null
   fbLoading: boolean
   fbSignIn: (email: string, password: string) => Promise<void>

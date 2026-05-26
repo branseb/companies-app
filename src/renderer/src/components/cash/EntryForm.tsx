@@ -4,7 +4,7 @@ import { SaveOutlined } from "@mui/icons-material";
 import { useCompany } from "../../context/company";
 import type { CashRegister } from "../../models/cashEntry";
 
-interface EntryFormProps {
+type EntryFormProps = {
     registers: CashRegister[];
     defaultRegisterId: number | null;
     defaultCurrency: string;

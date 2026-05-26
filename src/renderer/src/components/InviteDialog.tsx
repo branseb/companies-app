@@ -9,7 +9,7 @@ import { ContentCopy, Delete, Edit, Link, Refresh, Save } from "@mui/icons-mater
 
 type InviteStep = "idle" | "loading" | "link" | "error";
 
-interface Invite {
+type Invite = {
     id: string;
     companyName: string;
     expiresAt: string | null;
@@ -18,7 +18,7 @@ interface Invite {
     usedByUid: string | null;
 }
 
-interface InviteDialogProps {
+type InviteDialogProps = {
     open: boolean;
     onClose: () => void;
     companyId: string;

@@ -3,7 +3,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Se
 import { useCompany } from "../../context/company";
 import type { CashEntry } from "../../models/cashEntry";
 
-interface EditEntryDialogProps {
+type EditEntryDialogProps = {
     entry: CashEntry | null;
     onClose: () => void;
     onSaved: () => void;

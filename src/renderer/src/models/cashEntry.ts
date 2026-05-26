@@ -1,11 +1,11 @@
-export interface CashRegister {
+export type CashRegister = {
     id: number;
     name: string;
     currency: string;
     note?: string;
 }
 
-export interface CashEntry {
+export type CashEntry = {
     id: number;
     date: string;
     amount: number;
@@ -17,5 +17,4 @@ export interface CashEntry {
     pairedBankTransactionId?: number;
 }
 
-export const fmt = (n: number, currency: string) =>
-    new Intl.NumberFormat("sk-SK", { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
+export { fmtCurrency as fmt } from "../utils/formatters";

@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 
-export interface StatCardProps {
+export type StatCardProps = {
     label: string;
     value: string;
     sub?: string;

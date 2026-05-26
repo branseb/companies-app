@@ -14,7 +14,7 @@ const fmtDate = (d: string) => {
 
 // ─── Manual link dialog ───────────────────────────────────────────────────────
 
-interface LinkDialogProps {
+type LinkDialogProps = {
     open: boolean;
     tx: Tx | null;
     invoices: InvoiceOption[];
@@ -81,7 +81,7 @@ export const LinkInvoiceDialog: React.FC<LinkDialogProps> = ({ open, tx, invoice
 
 // ─── Auto-match dialog ────────────────────────────────────────────────────────
 
-interface AutoMatchDialogProps {
+type AutoMatchDialogProps = {
     open: boolean;
     suggestions: MatchSuggestion[];
     onClose: () => void;

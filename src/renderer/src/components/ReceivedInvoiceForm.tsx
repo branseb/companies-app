@@ -50,7 +50,7 @@ function rowToSimple(inv: InvoiceRow): SimpleInvoice {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-interface Props {
+type Props = {
     onAdd: () => void;
     editInvoice?: InvoiceRow;
 }

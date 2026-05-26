@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { useSnackbar } from "../hooks/useSnackbar";
 import {
     Alert,
     Box,
@@ -26,16 +25,13 @@ import {
 } from "@mui/material";
 import { Add, CheckCircle, DeleteOutline, Download, Edit, FileDownload, FileUpload, KeyboardArrowDown, KeyboardArrowUp, RadioButtonUnchecked } from "@mui/icons-material";
 import { CircularProgress } from "@mui/material";
-import { useCompany } from "../context/company";
-import { parseInvoiceXML } from "../utils/parseInvoiceXML";
-import type { EN16931Invoice } from "../models/EN16931Invoice";
 import { ReceivedInvoiceForm } from "./ReceivedInvoiceForm";
-import type { InvoiceRow } from "./invoice/invoiceTypes";
 import { tryParse, formatDate, isOverdue, fmtMoney, computeTotal, downloadCSV } from "./invoice/invoiceUtils";
 import { InvoiceDetail } from "./invoice/InvoiceDetail";
 import { XmlPreviewDialog } from "./invoice/XmlPreviewDialog";
+import { useInvoiceList } from "../hooks/useInvoiceList";
 
-interface Props {
+type Props = {
     type: "issued" | "received";
     refresh: boolean;
     onAdd?: () => void;
@@ -50,26 +46,21 @@ const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2];
 
 export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
-    const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const location = useLocation();
     const [statusFilter, setStatusFilter] = useState<"all" | "unpaid" | "overdue" | "paid">("all");
     const [yearFilter, setYearFilter] = useState<number | "all">(currentYear);
-    const [loading, setLoading] = useState(false);
-    const [pdfLoading, setPdfLoading] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
-    const [editingInvoice, setEditingInvoice] = useState<InvoiceRow | null>(null);
-    const [highlightId, setHighlightId] = useState<string | null>(null);
-    const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
-    const location = useLocation();
-    const { activeCompany, activeConfigId } = useCompany();
-
+    const [editingInvoice, setEditingInvoice] = useState<Parameters<typeof ReceivedInvoiceForm>[0]["editInvoice"]>(undefined);
     const fileRef = useRef<HTMLInputElement>(null);
-    const [xmlInvoice, setXmlInvoice] = useState<EN16931Invoice | null>(null);
-    const [xmlFormat, setXmlFormat] = useState("");
-    const [xmlDialog, setXmlDialog] = useState(false);
-    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
-    useEffect(() => { loadInvoices(); }, [type, refresh, activeCompany]);
+    const {
+        invoices, loading, pdfLoading,
+        expandedId, setExpandedId, highlightId, setHighlightId, highlightRowRef,
+        xmlInvoice, xmlFormat, xmlDialog, setXmlDialog,
+        snackbar, closeSnackbar,
+        loadInvoices, handleDownload, handleDelete, handleTogglePaid,
+        handleFile, handleImport, toggle,
+    } = useInvoiceList(type, refresh, onAdd);
 
     useEffect(() => {
         const id = (location.state as { highlightId?: number } | null)?.highlightId;
@@ -83,36 +74,13 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
         return () => clearTimeout(fade);
     }, [location.key]);
 
-    useEffect(() => {
-        if (!highlightId) return;
-        // wait one tick for DOM to update with the ref
-        const t = setTimeout(() => {
-            highlightRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 80);
-        return () => clearTimeout(t);
-    }, [highlightId, invoices]);
-
-    const loadInvoices = () => {
-        if (!activeCompany) return;
-        setLoading(true);
-        const fetch = type === "issued"
-            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.ico)
-            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico);
-        fetch.then((data: any[]) => setInvoices(data.map(i => ({ ...i, id: String(i.id) })))).finally(() => setLoading(false));
-    };
-
-    const handleDownload = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setPdfLoading(id);
-        try {
-            const filePath = await window.electron.pdf.download(activeConfigId!, id);
-            window.electron.pdf.open(filePath);
-        } catch (err) {
-            showSnackbar("Chyba pri generovaní PDF", "error");
-        } finally {
-            setPdfLoading(null);
-        }
-    };
+    const filteredInvoices = invoices.filter(inv => {
+        if (yearFilter !== "all" && !inv.issueDate.startsWith(String(yearFilter))) return false;
+        if (statusFilter === "paid")    return inv.paid;
+        if (statusFilter === "unpaid")  return !inv.paid;
+        if (statusFilter === "overdue") return !inv.paid && isOverdue(inv);
+        return true;
+    });
 
     const handleExportCSV = () => {
         const sep = ";";
@@ -136,61 +104,6 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
         downloadCSV([header, ...rows].join("\n"), `faktury_${type}_${year}.csv`);
     };
 
-    const toggle = (id: string) => setExpandedId(prev => prev === id ? null : id);
-
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        await window.api.invoice.delete(activeConfigId!, Number(id));
-        setInvoices(prev => prev.filter(i => i.id !== id));
-    };
-
-    const handleTogglePaid = async (inv: InvoiceRow, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const newPaid = !inv.paid;
-        const newPaidDate = newPaid ? new Date().toISOString().split("T")[0] : undefined;
-        await window.api.invoice.markPaid(activeConfigId!, Number(inv.id), newPaid);
-        setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, paid: newPaid, paidDate: newPaidDate } : i));
-    };
-
-    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const text = ev.target?.result as string;
-            const result = parseInvoiceXML(text);
-            if ("error" in result) {
-                showSnackbar(result.error, "error");
-            } else {
-                setXmlInvoice(result.invoice);
-                setXmlFormat(result.format);
-                setXmlDialog(true);
-            }
-        };
-        reader.readAsText(file, "utf-8");
-        e.target.value = "";
-    };
-
-    const handleImport = async (invoice: EN16931Invoice) => {
-        try {
-            await window.api.invoice.create(activeConfigId!, invoice);
-            setXmlDialog(false);
-            onAdd?.();
-            loadInvoices();
-            showSnackbar("Faktúra importovaná");
-        } catch {
-            showSnackbar("Chyba pri importe faktúry", "error");
-        }
-    };
-
-    const filteredInvoices = invoices.filter(inv => {
-        if (yearFilter !== "all" && !inv.issueDate.startsWith(String(yearFilter))) return false;
-        if (statusFilter === "paid")    return inv.paid;
-        if (statusFilter === "unpaid")  return !inv.paid;
-        if (statusFilter === "overdue") return !inv.paid && isOverdue(inv);
-        return true;
-    });
-
     return (
         <Paper style={{ padding: 20 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5} flexWrap="wrap" gap={1}>
@@ -198,7 +111,7 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
                 <Stack direction="row" gap={1} alignItems="center">
                     {type === "received" && (
                         <Button variant="contained" size="small" startIcon={<Add />}
-                            onClick={() => { setEditingInvoice(null); setShowForm(s => !s); }}>
+                            onClick={() => { setEditingInvoice(undefined); setShowForm(s => !s); }}>
                             {showForm && !editingInvoice ? "Zrušiť" : "Pridať faktúru"}
                         </Button>
                     )}
@@ -239,8 +152,8 @@ export const InvoiceList: React.FC<Props> = ({ type, refresh, onAdd }) => {
 
             {showForm && type === "received" && (
                 <ReceivedInvoiceForm
-                    editInvoice={editingInvoice ?? undefined}
-                    onAdd={() => { setShowForm(false); setEditingInvoice(null); loadInvoices(); onAdd?.(); }}
+                    editInvoice={editingInvoice}
+                    onAdd={() => { setShowForm(false); setEditingInvoice(undefined); loadInvoices(); onAdd?.(); }}
                 />
             )}
 

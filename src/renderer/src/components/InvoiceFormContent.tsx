@@ -5,7 +5,7 @@ import { PartyAutocomplete } from './PartyAutocomplete'
 import { FormSection } from './FormSection'
 import { InvoiceItemsEditor } from './InvoiceItemsEditor'
 
-interface Props {
+type Props = {
   invoice: SimpleInvoice
   onChange: (inv: SimpleInvoice) => void
   vatEnabled: boolean

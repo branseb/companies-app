@@ -30,7 +30,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString()
 
-interface Props {
+type Props = {
   open: boolean
   base64: string
   fileName: string

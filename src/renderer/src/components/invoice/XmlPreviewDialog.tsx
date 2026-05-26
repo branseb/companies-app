@@ -7,7 +7,7 @@ import {
 import type { EN16931Invoice } from "../../models/EN16931Invoice";
 import { formatDate, fmtMoney } from "./invoiceUtils";
 
-interface Props {
+type Props = {
     invoice: EN16931Invoice | null;
     format: string;
     open: boolean;

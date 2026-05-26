@@ -7,7 +7,7 @@ import {
 import { CheckOutlined, CloseOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material";
 import type { BankAccount } from "../../models/bankTransaction";
 
-interface Props {
+type Props = {
     open: boolean;
     accounts: BankAccount[];
     companyId: number;

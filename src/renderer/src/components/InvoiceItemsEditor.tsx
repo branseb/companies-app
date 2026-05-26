@@ -10,7 +10,7 @@ import type { InvoiceItem } from "../models/SimpleInvoice";
 const TAX_RATES = [0, 5, 10, 19, 20, 23];
 const UNITS = ["ks", "hod", "deň", "kg", "g", "l", "m", "m²", "m³"];
 
-interface Props {
+type Props = {
     items: InvoiceItem[];
     onChange: (items: InvoiceItem[]) => void;
     vatEnabled?: boolean;

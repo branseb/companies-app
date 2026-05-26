@@ -2,7 +2,7 @@ import { Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import React from "react";
 import type { SimpleInvoice } from "../models/SimpleInvoice";
 
-interface CurrencySelectProps {
+type CurrencySelectProps = {
     invoice: SimpleInvoice;
     onChange: (currency: string) => void;
 }

@@ -17,7 +17,7 @@ const scrollbar = {
   '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.400', borderRadius: 2, border: '2px solid transparent', backgroundClip: 'padding-box' },
 }
 
-interface TxRow {
+type TxRow = {
   date: string
   amount: string
   currency: string
@@ -44,7 +44,7 @@ function toImportRow(r: TxRow): ImportRow | null {
   }
 }
 
-interface Props {
+type Props = {
   open: boolean
   base64: string
   fileName: string

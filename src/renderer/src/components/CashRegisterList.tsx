@@ -1,31 +1,29 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Alert, Button, Chip, IconButton, Paper, Stack,
     Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
+import { AccountBalance, Add, DeleteOutline, Edit, LinkOff, ManageAccounts, Receipt } from "@mui/icons-material";
 import { useCompany } from "../context/company";
-import { useNavigate } from "react-router-dom";
 import type { CashEntry, CashRegister } from "../models/cashEntry";
-import { fmt } from "../models/cashEntry";
-import type { InvoiceOption, Tx } from "../models/bankTransaction";
-import { fmt as fmtBank } from "../models/bankTransaction";
-import { toInvoiceOption } from "../utils/bankTransactionParsers";
+import { fmtCurrency } from "../utils/formatters";
 import { fmtDate } from "../utils/formatters";
 import { LinkInvoiceDialog } from "./bankTransaction/InvoiceDialogs";
 import { PairBankTxDialog } from "./cash/PairBankTxDialog";
 import { EntryForm } from "./cash/EntryForm";
 import { ManageDialog } from "./cash/ManageDialog";
 import { EditEntryDialog } from "./cash/EditEntryDialog";
+import { useCashRegister } from "../hooks/useCashRegister";
+import { useInvoices } from "../hooks/useInvoices";
+import { SummaryChips } from "./shared/SummaryChips";
+import { LinkedInvoiceChip, UnlinkedInvoiceButton } from "./shared/LinkedInvoiceChip";
 
 export const CashRegisterList: React.FC = () => {
     const { activeCompany, activeConfigId } = useCompany();
-    const navigate = useNavigate();
-    const [entries, setEntries] = useState<CashEntry[]>([]);
-    const [registers, setRegisters] = useState<CashRegister[]>([]);
-    const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
-    const [bankTransactions, setBankTransactions] = useState<Tx[]>([]);
+    const { entries, setEntries, registers, setRegisters, bankTransactions, setBankTransactions, load, loadRegisters, loadBankTransactions } = useCashRegister();
+    const { invoices, loadInvoices } = useInvoices();
+
     const [activeRegisterId, setActiveRegisterId] = useState<number | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [manageDialog, setManageDialog] = useState(false);
@@ -34,33 +32,6 @@ export const CashRegisterList: React.FC = () => {
     const [pairTarget, setPairTarget] = useState<CashEntry | null>(null);
     const [search, setSearch] = useState("");
     const [editEntry, setEditEntry] = useState<CashEntry | null>(null);
-
-    const load = useCallback(async () => {
-        if (!activeCompany?.id) return;
-        setEntries(await window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id));
-    }, [activeCompany?.id]);
-
-    const loadRegisters = useCallback(async () => {
-        if (!activeCompany?.id) return;
-        setRegisters(await window.api.cashRegister.byCompany(activeConfigId!, activeCompany.id));
-    }, [activeCompany?.id]);
-
-    const loadInvoices = useCallback(async () => {
-        if (!activeCompany) return;
-        const [issued, received] = await Promise.all([
-            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
-            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
-        ]);
-        setInvoices([
-            ...issued.map((i: any) => toInvoiceOption(i, "issued")),
-            ...received.map((i: any) => toInvoiceOption(i, "received")),
-        ]);
-    }, [activeCompany]);
-
-    const loadBankTransactions = useCallback(async () => {
-        if (!activeCompany?.id) return;
-        setBankTransactions(await window.api.bankTransaction.byCompany(activeConfigId!, activeCompany.id));
-    }, [activeCompany?.id]);
 
     useEffect(() => { load(); loadRegisters(); loadInvoices(); loadBankTransactions(); }, [load, loadRegisters, loadInvoices, loadBankTransactions]);
 
@@ -102,7 +73,6 @@ export const CashRegisterList: React.FC = () => {
     const income = displayed.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
     const expense = displayed.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0);
     const currency = displayed[0]?.currency ?? registers.find(r => r.id === activeRegisterId)?.currency ?? "EUR";
-    const balance = income + expense;
 
     return (
         <Stack gap={3}>
@@ -136,13 +106,7 @@ export const CashRegisterList: React.FC = () => {
                 </Tabs>
             )}
 
-            {displayed.length > 0 && (
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                    <Chip label={`Príjmy: ${fmt(income, currency)}`} color="success" variant="outlined" />
-                    <Chip label={`Výdaje: ${fmt(expense, currency)}`} color="error" variant="outlined" />
-                    <Chip label={`Zostatok: ${fmt(balance, currency)}`} color={balance >= 0 ? "primary" : "error"} icon={<LocalAtm />} />
-                </Stack>
-            )}
+            {displayed.length > 0 && <SummaryChips income={income} expense={expense} currency={currency} showBalanceIcon />}
 
             {showForm && (
                 <EntryForm
@@ -208,35 +172,14 @@ export const CashRegisterList: React.FC = () => {
                                         </TableCell>
                                         <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                                             <Typography fontWeight={600} color={entry.amount >= 0 ? "success.main" : "error.main"}>
-                                                {entry.amount >= 0 ? "+" : ""}{fmt(entry.amount, entry.currency)}
+                                                {entry.amount >= 0 ? "+" : ""}{fmtCurrency(entry.amount, entry.currency)}
                                             </Typography>
                                         </TableCell>
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                            {linkedInv ? (
-                                                <Stack direction="row" alignItems="center" gap={0.5}>
-                                                    <Chip
-                                                        icon={<Receipt sx={{ fontSize: 14 }} />}
-                                                        label={linkedInv.invoiceNumber}
-                                                        size="small"
-                                                        color={linkedInv.type === "issued" ? "primary" : "warning"}
-                                                        variant="outlined"
-                                                        onClick={() => navigate(`/${activeConfigId}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
-                                                        title={linkedInv.partyName}
-                                                        sx={{ cursor: "pointer" }}
-                                                    />
-                                                    <Tooltip title="Odpojiť faktúru">
-                                                        <IconButton size="small" onClick={() => handleUnlink(entry.id)}>
-                                                            <LinkOff sx={{ fontSize: 14 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Stack>
-                                            ) : (
-                                                <Tooltip title="Priradiť faktúru">
-                                                    <IconButton size="small" onClick={() => setLinkTarget(entry)}>
-                                                        <Receipt fontSize="small" sx={{ opacity: 0.3 }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
+                                            {linkedInv
+                                                ? <LinkedInvoiceChip invoice={linkedInv} onUnlink={() => handleUnlink(entry.id)} />
+                                                : <UnlinkedInvoiceButton onLink={() => setLinkTarget(entry)} />
+                                            }
                                         </TableCell>
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
                                             {entry.pairedBankTransactionId ? (() => {
@@ -245,7 +188,7 @@ export const CashRegisterList: React.FC = () => {
                                                     <Stack direction="row" alignItems="center" gap={0.5}>
                                                         <Chip
                                                             icon={<AccountBalance sx={{ fontSize: 14 }} />}
-                                                            label={paired ? `${fmtDate(paired.date)} · ${fmtBank(paired.amount, paired.currency)}` : `#${entry.pairedBankTransactionId}`}
+                                                            label={paired ? `${fmtDate(paired.date)} · ${fmtCurrency(paired.amount, paired.currency)}` : `#${entry.pairedBankTransactionId}`}
                                                             size="small"
                                                             color="info"
                                                             variant="outlined"
@@ -333,7 +276,6 @@ export const CashRegisterList: React.FC = () => {
                     }
                 }}
             />
-
         </Stack>
     );
 };

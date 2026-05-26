@@ -15,7 +15,7 @@ const fmtDate = (d: string) => {
     return y && m && day ? `${parseInt(day)}. ${parseInt(m)}. ${y}` : d;
 };
 
-interface Props {
+type Props = {
     open: boolean;
     cashEntry: CashEntry | null;
     bankTransactions: Tx[];

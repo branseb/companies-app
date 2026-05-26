@@ -1,4 +1,4 @@
-export interface BankAccount {
+export type BankAccount = {
     id: number;
     name: string;
     iban?: string;
@@ -6,7 +6,7 @@ export interface BankAccount {
     note?: string;
 }
 
-export interface Tx {
+export type Tx = {
     id: number;
     date: string;
     amount: number;
@@ -23,7 +23,7 @@ export interface Tx {
     pairedCashEntryId?: number;
 }
 
-export interface InvoiceOption {
+export type InvoiceOption = {
     id: number;
     invoiceNumber: string;
     issueDate: string;
@@ -34,7 +34,7 @@ export interface InvoiceOption {
     type: "issued" | "received";
 }
 
-export interface MatchSuggestion {
+export type MatchSuggestion = {
     tx: Tx;
     invoice: InvoiceOption;
     score: number;
@@ -69,5 +69,4 @@ export const FIELD_LABELS: Record<keyof ColMapping, string> = {
     specificSymbol: "ŠS",
 };
 
-export const fmt = (n: number, currency: string) =>
-    new Intl.NumberFormat("sk-SK", { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
+export { fmtCurrency as fmt } from "../utils/formatters";

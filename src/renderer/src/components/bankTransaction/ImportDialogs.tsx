@@ -67,7 +67,7 @@ const AccountSelect: React.FC<{ accounts: BankAccount[]; value: number | ""; onC
 
 // ─── XML import dialog ────────────────────────────────────────────────────────
 
-interface XmlDialogProps {
+type XmlDialogProps = {
     open: boolean;
     rows: ImportRow[];
     format: string;
@@ -117,7 +117,7 @@ export const XmlImportDialog: React.FC<XmlDialogProps> = ({ open, rows, format, 
 
 // ─── CSV import dialog ────────────────────────────────────────────────────────
 
-interface CsvDialogProps {
+type CsvDialogProps = {
     open: boolean;
     csvRows: string[][];
     accounts: BankAccount[];

@@ -9,7 +9,7 @@ import { FormSection } from "./FormSection";
 import { useCompany } from "../context/company";
 import type { BankAccount } from "../models/bankTransaction";
 
-interface FormData {
+type FormData = {
     date: string;
     absAmount: string;
     type: "credit" | "debit";
@@ -39,7 +39,7 @@ const empty = (): FormData => ({
     note: "",
 });
 
-interface Props {
+type Props = {
     onAdd: () => void;
     accounts?: BankAccount[];
     bankAccountId?: number | null;

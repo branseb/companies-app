@@ -4,7 +4,7 @@ import { Add, DeleteOutline, Edit } from "@mui/icons-material";
 import { useCompany } from "../../context/company";
 import type { CashRegister } from "../../models/cashEntry";
 
-interface ManageDialogProps {
+type ManageDialogProps = {
     open: boolean;
     registers: CashRegister[];
     companyId: number;

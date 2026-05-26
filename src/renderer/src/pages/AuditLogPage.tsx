@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 import { useCompany } from "../context/company";
 
-interface LogEntry {
+type LogEntry = {
     id: number;
     action: string;
     entityType: string;

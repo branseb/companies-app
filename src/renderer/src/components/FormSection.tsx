@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Grid, Typography } from "@mui/material";
 
-interface Props {
+type Props = {
     title: string;
     children: React.ReactNode;
     spacing?: number;

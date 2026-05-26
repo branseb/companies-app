@@ -1,4 +1,4 @@
-export interface InvoiceRow {
+export type InvoiceRow = {
     id: string;
     invoiceNumber: string;
     issueDate: string;

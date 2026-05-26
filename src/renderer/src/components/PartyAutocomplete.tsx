@@ -3,7 +3,7 @@ import { Autocomplete, TextField, Typography, Box } from "@mui/material";
 import type { Party } from "../models/SimpleInvoice";
 import { useCompany } from "../context/company";
 
-interface Props {
+type Props = {
     value: Party;
     onChange: (party: Party) => void;
     label?: string;

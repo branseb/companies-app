@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useCompany } from "../context/company";
 import { Company } from "../models/company";
 
-interface Props {
+type Props = {
     onSaved: () => void;
 }
 

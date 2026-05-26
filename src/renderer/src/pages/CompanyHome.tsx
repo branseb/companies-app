@@ -19,7 +19,7 @@ import { InviteDialog } from "../components/InviteDialog";
 
 // ─── Tiles ────────────────────────────────────────────────────────────────────
 
-interface Tile { label: string; icon: SvgIconComponent; color: string; page: string; badgeCount?: number; }
+type Tile = { label: string; icon: SvgIconComponent; color: string; page: string; badgeCount?: number; }
 
 const tiles: Tile[] = [
     { label: "Vytvoriť faktúru",  icon: NoteAdd,       color: "#1976d2", page: "new-invoice"       },
@@ -33,12 +33,12 @@ const tiles: Tile[] = [
 
 // ─── Stats helpers ────────────────────────────────────────────────────────────
 
-interface InvoiceStat {
+type InvoiceStat = {
     count: number;
     totals: { currency: string; amount: number }[];
 }
 
-interface DashboardStats {
+type DashboardStats = {
     unpaidIssued: InvoiceStat;
     unpaidReceived: InvoiceStat;
     overdueIssued: InvoiceStat;

@@ -1,72 +1,49 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-    IconButton, MenuItem, Paper, Popover, Select, Snackbar, Stack,
+    Alert, Button, Chip, IconButton, Paper, Popover, Snackbar, Stack,
     Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Tabs, TextField, Tooltip, Typography,
 } from "@mui/material";
-import { Add, AutoAwesome, DeleteOutline, EditNote, FileUpload, LinkOff, LocalAtm, ManageAccounts, Receipt } from "@mui/icons-material";
-import type { BankAccount } from "../models/bankTransaction";
+import { Add, AutoAwesome, DeleteOutline, EditNote, FileUpload, LinkOff, LocalAtm, ManageAccounts } from "@mui/icons-material";
 import { useCompany } from "../context/company";
-import { useNavigate } from "react-router-dom";
 import { BankTransactionForm } from "./BankTransactionForm";
 import { CsvImportDialog, XmlImportDialog } from "./bankTransaction/ImportDialogs";
 import { AutoMatchDialog, LinkInvoiceDialog } from "./bankTransaction/InvoiceDialogs";
 import { BankAccountsDialog } from "./bankTransaction/BankAccountsDialog";
-import { buildSuggestions, parseCSV, parseXML, toInvoiceOption } from "../utils/bankTransactionParsers";
-import { fmt } from "../models/bankTransaction";
-
+import { buildSuggestions, parseCSV, parseXML } from "../utils/bankTransactionParsers";
 import { fmtDate } from "../utils/formatters";
 import { useSnackbar } from "../hooks/useSnackbar";
-import type { ImportRow, InvoiceOption, MatchSuggestion, Tx } from "../models/bankTransaction";
+import { useInvoices } from "../hooks/useInvoices";
+import { useBankTransactions } from "../hooks/useBankTransactions";
+import { SummaryChips } from "./shared/SummaryChips";
+import { LinkedInvoiceChip, UnlinkedInvoiceButton } from "./shared/LinkedInvoiceChip";
+import type { ImportRow, MatchSuggestion, Tx } from "../models/bankTransaction";
+import { fmtCurrency } from "../utils/formatters";
 
 export const BankTransactionList: React.FC = () => {
     const { activeCompany, activeConfigId } = useCompany();
-    const navigate = useNavigate();
-    const [transactions, setTransactions] = useState<Tx[]>([]);
-    const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
-    const [accounts, setAccounts] = useState<BankAccount[]>([]);
+    const { transactions, setTransactions, accounts, load, loadAccounts } = useBankTransactions();
+    const { invoices, loadInvoices } = useInvoices();
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
+
     const [cashEntries, setCashEntries] = useState<{ id: number; date: string; amount: number; currency: string; description?: string; cashRegisterId?: number }[]>([]);
     const [cashRegisters, setCashRegisters] = useState<{ id: number; name: string }[]>([]);
     const [activeAccountId, setActiveAccountId] = useState<number | null>(null);
     const [manageDialog, setManageDialog] = useState(false);
     const [showForm, setShowForm] = useState(false);
-    const { snackbar, showSnackbar, closeSnackbar } = useSnackbar();
 
-    // Import dialogs
     const fileRef = useRef<HTMLInputElement>(null);
     const [csvDialog, setCsvDialog] = useState<{ open: boolean; rows: string[][] }>({ open: false, rows: [] });
     const [xmlDialog, setXmlDialog] = useState<{ open: boolean; rows: ImportRow[]; format: string; accountIban?: string }>({ open: false, rows: [], format: "" });
     const [search, setSearch] = useState("");
 
-    // Invoice linking
     const [linkTarget, setLinkTarget] = useState<Tx | null>(null);
     const [autoSuggestions, setAutoSuggestions] = useState<MatchSuggestion[]>([]);
 
-    // Note popover
     const [noteAnchor, setNoteAnchor] = useState<HTMLElement | null>(null);
     const [noteTarget, setNoteTarget] = useState<{ id: number; note: string } | null>(null);
 
-    const load = useCallback(async () => {
-        if (!activeCompany?.id) return;
-        setTransactions(await window.api.bankTransaction.byCompany(activeConfigId!, activeCompany.id));
-    }, [activeCompany?.id]);
-
-    const loadAccounts = useCallback(async () => {
-        if (!activeCompany?.id) return;
-        setAccounts(await window.api.bankAccount.byCompany(activeConfigId!, activeCompany.id));
-    }, [activeCompany?.id]);
-
-    const loadInvoices = useCallback(async () => {
-        if (!activeCompany) return;
-        const [issued, received] = await Promise.all([
-            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
-            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
-        ]);
-        setInvoices([...issued.map((i: any) => toInvoiceOption(i, "issued")), ...received.map((i: any) => toInvoiceOption(i, "received"))]);
-    }, [activeCompany]);
-
-    const loadCash = useCallback(async () => {
+    const loadCash = async () => {
         if (!activeCompany?.id) return;
         const [entries, regs] = await Promise.all([
             window.api.cashEntry.byCompany(activeConfigId!, activeCompany.id),
@@ -74,9 +51,9 @@ export const BankTransactionList: React.FC = () => {
         ]);
         setCashEntries(entries);
         setCashRegisters(regs);
-    }, [activeCompany?.id]);
+    };
 
-    useEffect(() => { load(); loadInvoices(); loadAccounts(); loadCash(); }, [load, loadInvoices, loadAccounts, loadCash]);
+    useEffect(() => { load(); loadInvoices(); loadAccounts(); loadCash(); }, [load, loadInvoices, loadAccounts]);
 
     const handleDelete = async (id: number) => {
         await window.api.bankTransaction.delete(activeConfigId!, id);
@@ -140,10 +117,7 @@ export const BankTransactionList: React.FC = () => {
         setNoteAnchor(null);
     };
 
-    const byAccount = activeAccountId === null
-        ? transactions
-        : transactions.filter(t => t.bankAccountId === activeAccountId);
-
+    const byAccount = activeAccountId === null ? transactions : transactions.filter(t => t.bankAccountId === activeAccountId);
     const q = search.toLowerCase();
     const displayed = q
         ? byAccount.filter(t =>
@@ -160,7 +134,6 @@ export const BankTransactionList: React.FC = () => {
 
     return (
         <Stack gap={3}>
-            {/* Header */}
             <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
                 <Typography variant="h5" fontWeight={700}>Bankové pohyby</Typography>
                 <Stack direction="row" gap={1}>
@@ -181,7 +154,6 @@ export const BankTransactionList: React.FC = () => {
                 </Stack>
             </Stack>
 
-            {/* Account tabs */}
             {accounts.length > 0 && (
                 <Tabs
                     value={activeAccountId ?? "all"}
@@ -195,19 +167,10 @@ export const BankTransactionList: React.FC = () => {
                 </Tabs>
             )}
 
-            {/* Summary */}
-            {displayed.length > 0 && (
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                    <Chip label={`Príjmy: ${fmt(income, currency)}`} color="success" variant="outlined" />
-                    <Chip label={`Výdaje: ${fmt(expense, currency)}`} color="error" variant="outlined" />
-                    <Chip label={`Zostatok: ${fmt(income + expense, currency)}`} color="primary" />
-                </Stack>
-            )}
+            {displayed.length > 0 && <SummaryChips income={income} expense={expense} currency={currency} />}
 
             {showForm && <BankTransactionForm onAdd={() => { setShowForm(false); load(); }} accounts={accounts} bankAccountId={activeAccountId} />}
 
-            {/* Table */}
-            {/* Search */}
             <TextField
                 size="small" placeholder="Hľadať v pohyboch (popis, protistrana, VS, poznámka)..."
                 value={search} onChange={e => setSearch(e.target.value)}
@@ -249,37 +212,15 @@ export const BankTransactionList: React.FC = () => {
                                         </TableCell>
                                         <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
                                             <Typography fontWeight={600} color={tx.amount >= 0 ? "success.main" : "error.main"}>
-                                                {tx.amount >= 0 ? "+" : ""}{fmt(tx.amount, tx.currency)}
+                                                {tx.amount >= 0 ? "+" : ""}{fmtCurrency(tx.amount, tx.currency)}
                                             </Typography>
                                         </TableCell>
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                            {linkedInv ? (
-                                                <Stack direction="row" alignItems="center" gap={0.5}>
-                                                    <Chip
-                                                        icon={<Receipt sx={{ fontSize: 14 }} />}
-                                                        label={linkedInv.invoiceNumber}
-                                                        size="small"
-                                                        color={linkedInv.type === "issued" ? "primary" : "warning"}
-                                                        variant="outlined"
-                                                        onClick={() => navigate(`/${activeConfigId}/invoices/${linkedInv.type}`, { state: { highlightId: linkedInv.id } })}
-                                                        title={`${linkedInv.partyName} | ${fmt(linkedInv.grossTotal, linkedInv.currency)}`}
-                                                        sx={{ cursor: "pointer" }}
-                                                    />
-                                                    <Tooltip title="Odpojiť faktúru">
-                                                        <IconButton size="small" onClick={() => handleUnlink(tx.id)}>
-                                                            <LinkOff sx={{ fontSize: 14 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Stack>
-                                            ) : (
-                                                <Tooltip title="Priradiť faktúru">
-                                                    <IconButton size="small" onClick={() => setLinkTarget(tx)}>
-                                                        <Receipt fontSize="small" sx={{ opacity: 0.3 }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
+                                            {linkedInv
+                                                ? <LinkedInvoiceChip invoice={linkedInv} onUnlink={() => handleUnlink(tx.id)} showAmount />
+                                                : <UnlinkedInvoiceButton onLink={() => setLinkTarget(tx)} />
+                                            }
                                         </TableCell>
-                                        {/* Paired cash entry indicator */}
                                         <TableCell sx={{ whiteSpace: "nowrap" }}>
                                             {tx.pairedCashEntryId ? (() => {
                                                 const entry = cashEntries.find(e => e.id === tx.pairedCashEntryId);
@@ -288,7 +229,7 @@ export const BankTransactionList: React.FC = () => {
                                                     <Stack direction="row" alignItems="center" gap={0.5}>
                                                         <Chip
                                                             icon={<LocalAtm sx={{ fontSize: 14 }} />}
-                                                            label={reg ? reg.name : (entry ? `${entry.date.slice(0, 10)}` : `#${tx.pairedCashEntryId}`)}
+                                                            label={reg ? reg.name : (entry ? entry.date.slice(0, 10) : `#${tx.pairedCashEntryId}`)}
                                                             size="small"
                                                             color="info"
                                                             variant="outlined"
@@ -330,13 +271,11 @@ export const BankTransactionList: React.FC = () => {
                 </TableContainer>
             )}
 
-            {/* Dialogs */}
             <CsvImportDialog open={csvDialog.open} csvRows={csvDialog.rows} accounts={accounts} onClose={() => setCsvDialog(d => ({ ...d, open: false }))} onImport={handleImport} />
             <XmlImportDialog open={xmlDialog.open} rows={xmlDialog.rows} format={xmlDialog.format} accountIban={xmlDialog.accountIban} accounts={accounts} onClose={() => setXmlDialog(d => ({ ...d, open: false }))} onImport={handleImport} />
             <LinkInvoiceDialog open={!!linkTarget} tx={linkTarget} invoices={invoices} onClose={() => setLinkTarget(null)} onLink={(txId, invId) => { handleLink(txId, invId); setLinkTarget(null); }} />
             <AutoMatchDialog open={!!autoSuggestions.length} suggestions={autoSuggestions} onClose={() => setAutoSuggestions([])} onApply={async (sel) => { await handleAutoApply(sel); }} />
 
-            {/* Note popover */}
             <Popover open={Boolean(noteAnchor)} anchorEl={noteAnchor} onClose={() => setNoteAnchor(null)}
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
                 <Stack sx={{ p: 2, width: 320 }} gap={1.5}>

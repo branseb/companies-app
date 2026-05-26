@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string
   text: string
   from: 'company' | 'accountant'

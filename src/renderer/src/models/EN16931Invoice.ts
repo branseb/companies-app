@@ -43,7 +43,7 @@ export type EN16931Invoice = {
 // PARTY (Dodávateľ / Odberateľ)
 // ==============================
 
-export interface Party {
+export type Party = {
     partyName: string;
 
     postalAddress: Address;
@@ -69,7 +69,7 @@ export interface Party {
 // ADRESA
 // ==============================
 
-export interface Address {
+export type Address = {
     streetName: string;
     cityName: string;
     postalZone: string;
@@ -80,7 +80,7 @@ export interface Address {
 // PLATBA
 // ==============================
 
-export interface PaymentMeans {
+export type PaymentMeans = {
     paymentMeansCode: string; // "31" = bank transfer (BT-81)
 
     payeeFinancialAccount?: {
@@ -95,13 +95,13 @@ export interface PaymentMeans {
 // DPH (Tax)
 // ==============================
 
-export interface TaxTotal {
+export type TaxTotal = {
     taxAmount: number;
 
     taxSubtotal: TaxSubtotal[];
 }
 
-export interface TaxSubtotal {
+export type TaxSubtotal = {
     taxableAmount: number;
     taxAmount: number;
 
@@ -119,7 +119,7 @@ export interface TaxSubtotal {
 // SUMY
 // ==============================
 
-export interface LegalMonetaryTotal {
+export type LegalMonetaryTotal = {
     lineExtensionAmount: number;   // bez DPH
     taxExclusiveAmount: number;
     taxInclusiveAmount: number;
@@ -130,7 +130,7 @@ export interface LegalMonetaryTotal {
 // POLOŽKY
 // ==============================
 
-export interface InvoiceLine {
+export type InvoiceLine = {
     id: string;
 
     invoicedQuantity: number;

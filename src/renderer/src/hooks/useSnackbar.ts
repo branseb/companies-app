@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-interface SnackbarState {
+export type SnackbarState = {
     open: boolean;
     message: string;
     severity: "success" | "error";
 }
 
-export function useSnackbar() {
+export const useSnackbar = () => {
     const [snackbar, setSnackbar] = useState<SnackbarState>({ open: false, message: "", severity: "success" });
 
     const showSnackbar = (message: string, severity: "success" | "error" = "success") =>
@@ -15,4 +15,4 @@ export function useSnackbar() {
     const closeSnackbar = () => setSnackbar(s => ({ ...s, open: false }));
 
     return { snackbar, showSnackbar, closeSnackbar };
-}
+};

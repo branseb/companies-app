@@ -1,4 +1,4 @@
-export interface SimpleInvoice {
+export type SimpleInvoice = {
   invoiceNumber: string;
 
   issueDate: string;
@@ -20,7 +20,7 @@ export interface SimpleInvoice {
   constantSymbol?: string;
 }
 
-export interface InvoiceItem {
+export type InvoiceItem = {
   description: string;
   quantity: number;
   unitPrice: number;
@@ -30,7 +30,7 @@ export interface InvoiceItem {
   discount?: number;
 }
 
-export interface Party {
+export type Party = {
   name: string;
   ico?: string;
   dic?: string;

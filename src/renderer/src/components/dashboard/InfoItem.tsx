@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Stack, Typography } from "@mui/material";
 
-interface InfoItemProps {
+type InfoItemProps = {
     icon: React.ReactNode;
     label: string;
     value: string;
