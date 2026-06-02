@@ -13,6 +13,7 @@ import { registerBackupIpc } from './ipc/backup';
 import { registerInviteIpc } from './ipc/invite';
 import { registerNotificationsIpc } from './ipc/notifications';
 import { registerDocumentsIpc } from './ipc/documents';
+import { registerReceiptsIpc } from './ipc/receipts';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -49,6 +50,7 @@ app.whenReady().then(async () => {
   registerInviteIpc();
   registerNotificationsIpc();
   registerDocumentsIpc();
+  registerReceiptsIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });

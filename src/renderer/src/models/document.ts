@@ -1,4 +1,4 @@
-export type DocumentType = 'invoice' | 'invoice_issued' | 'invoice_received' | 'bank_statement' | 'travel' | 'other'
+export type DocumentType = 'invoice' | 'invoice_issued' | 'invoice_received' | 'bank_statement' | 'travel' | 'receipt' | 'other'
 export type DocumentStatus = 'uploaded' | 'downloaded' | 'processed'
 
 export type CompanyDocument = {
@@ -14,6 +14,8 @@ export type CompanyDocument = {
     totalChunks: number
     filePath?: string
     invoiceId?: number
+    receiptId?: number
+    ekasaData?: Record<string, unknown>
 }
 
 export const TYPE_LABELS: Record<DocumentType, string> = {
@@ -22,6 +24,7 @@ export const TYPE_LABELS: Record<DocumentType, string> = {
     invoice_received: 'Prijatá faktúra',
     bank_statement: 'Výpis z účtu',
     travel: 'Cestovné',
+    receipt: 'Blok',
     other: 'Ostatné',
 }
 

@@ -10,7 +10,8 @@ import type { CompanyDocument, DocumentType } from '../models/document'
 import { CHUNK_SIZE } from '../models/document'
 import type { BankAccount, ImportRow } from '../models/bankTransaction'
 import { parseXML } from '../utils/bankTransactionParsers'
-import { buildFolderTree, fileToBase64, prettyPrintXml, type PickedFile } from '../utils/documentUtils'
+import { buildFolderTree, fileToBase64, prettyPrintXml, buildReceiptFileName, type PickedFile } from '../utils/documentUtils'
+import { decodeQrFromBase64, detectKind, fetchEkasaReceipt } from '../components/QrScanDialog'
 
 export const useDocuments = (companyId: string) => {
     const { activeCompany } = useCompany()
@@ -74,6 +75,8 @@ export const useDocuments = (companyId: string) => {
                     totalChunks: d.data().totalChunks ?? 0,
                     filePath: d.data().filePath,
                     invoiceId: d.data().invoiceId,
+                    receiptId: d.data().receiptId,
+                    ekasaData: d.data().ekasaData ?? undefined,
                 })))
                 setLoading(false)
             },
@@ -194,6 +197,35 @@ export const useDocuments = (companyId: string) => {
                 filePath: savedPath ?? null,
             })
             await Promise.all(snap.docs.map(s => deleteDoc(s.ref)))
+
+            if (activeCompany?.id && configId) {
+                const mime = d.contentType ?? ''
+                try {
+                    if (d.ekasaData) {
+                        const ekasaId = (d.ekasaData.receiptId as string | undefined) ?? ''
+                        await window.api.receipt.create(
+                            configId, activeCompany.id,
+                            ekasaId, JSON.stringify(d.ekasaData),
+                            base64, buildReceiptFileName(d.ekasaData, d.fileName, ekasaId),
+                        )
+                        window.dispatchEvent(new CustomEvent('receipts-changed'))
+                    } else if (mime.startsWith('image/')) {
+                        const qrText = await decodeQrFromBase64(base64, mime)
+                        if (qrText && detectKind(qrText) === 'ekasa') {
+                            let ekasaData: Record<string, unknown> = {}
+                            try { ekasaData = await fetchEkasaReceipt(qrText.trim()) } catch { }
+                            await window.api.receipt.create(
+                                configId, activeCompany.id,
+                                qrText.trim(), JSON.stringify(ekasaData),
+                                base64, buildReceiptFileName(ekasaData, d.fileName, qrText.trim()),
+                            )
+                            window.dispatchEvent(new CustomEvent('receipts-changed'))
+                        }
+                    }
+                } catch (err) {
+                    console.error('[receipt.create] zlyhalo:', err)
+                }
+            }
         } finally {
             setDownloading(null)
         }
@@ -267,6 +299,46 @@ export const useDocuments = (companyId: string) => {
         setXmlImport({ ...result, docId: d.id })
     }
 
+    const handleImportToReceipts = async (d: CompanyDocument): Promise<number | undefined> => {
+        if (!activeCompany?.id || !configId) return undefined
+        let base64: string
+        if (d.filePath) {
+            base64 = await window.electron.document.readFile(d.filePath)
+        } else {
+            const chunksCol = collection(db, 'companies', companyId, 'documents', d.id, 'chunks')
+            const snap = await getDocs(query(chunksCol, orderBy('index', 'asc')))
+            base64 = snap.docs.map(s => s.data().data as string).join('')
+        }
+        let result: any
+        if (d.ekasaData) {
+            const ekasaId = (d.ekasaData.receiptId as string | undefined) ?? ''
+            result = await window.api.receipt.create(
+                configId, activeCompany.id,
+                ekasaId, JSON.stringify(d.ekasaData),
+                base64, buildReceiptFileName(d.ekasaData, d.fileName, ekasaId),
+            )
+        } else {
+            const mime = d.contentType ?? 'image/jpeg'
+            const qrText = await decodeQrFromBase64(base64, mime)
+            let ekasaData: Record<string, unknown> = {}
+            if (qrText && detectKind(qrText) === 'ekasa') {
+                try { ekasaData = await fetchEkasaReceipt(qrText.trim()) } catch { }
+            }
+            const ekasaId = qrText?.trim() ?? ''
+            result = await window.api.receipt.create(
+                configId, activeCompany.id,
+                ekasaId, JSON.stringify(ekasaData),
+                base64, buildReceiptFileName(ekasaData, d.fileName, ekasaId),
+            )
+        }
+        const rid = result?.duplicate ? result.id : result?.id
+        if (rid) {
+            await updateDoc(doc(db, 'companies', companyId, 'documents', d.id), { receiptId: rid })
+        }
+        window.dispatchEvent(new CustomEvent('receipts-changed'))
+        return rid as number | undefined
+    }
+
     const handleReclassify = async (docId: string, newType: DocumentType) => {
         await updateDoc(doc(db, 'companies', companyId, 'documents', docId), { type: newType })
     }
@@ -299,7 +371,7 @@ export const useDocuments = (companyId: string) => {
         uploadFiles,
         handleDownload, handleDownloadAll, handleDeleteAllDownloaded,
         handlePreview, closePreview, reviewNav,
-        handleBankXmlImport,
+        handleBankXmlImport, handleImportToReceipts,
         handleReclassify, handleMarkProcessed, handleDelete,
         buildFolderTree,
     }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
     Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
     DialogContentText, DialogTitle, IconButton, LinearProgress, Menu, MenuItem,
@@ -8,10 +9,12 @@ import {
     ArrowDropDown, CloudUpload, Download, Delete, CheckCircle,
     OpenInNew, DownloadForOffline, SettingsOutlined,
     StorageOutlined, Visibility, ChevronLeft, ChevronRight, AccountBalance,
+    QrCode, Receipt,
 } from '@mui/icons-material'
 import { ImportInvoiceDialog } from '../components/ImportInvoiceDialog'
 import { XmlImportDialog } from '../components/bankTransaction/ImportDialogs'
 import { BankStatementPdfDialog } from '../components/BankStatementPdfDialog'
+import { QrScanDialog, fileToBase64 } from '../components/QrScanDialog'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -19,9 +22,10 @@ import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { NoteCell } from '../components/documents/NoteCell'
 import { FolderTree } from '../components/documents/FolderTree'
-import { buildFolderTree, fmtSize, fmtDocDate } from '../utils/documentUtils'
+import { buildFolderTree, fmtSize, fmtDocDate, buildReceiptFileName } from '../utils/documentUtils'
 import { TYPE_LABELS, STATUS_COLOR, STATUS_LABEL, type DocumentType } from '../models/document'
 import { useDocuments } from '../hooks/useDocuments'
+import { useCompany } from '../context/company'
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -50,9 +54,12 @@ export const DocumentsPage = ({ companyId }: { companyId: string }) => {
         uploadFiles,
         handleDownload, handleDownloadAll, handleDeleteAllDownloaded,
         handlePreview, closePreview, reviewNav,
-        handleBankXmlImport,
+        handleBankXmlImport, handleImportToReceipts,
         handleReclassify, handleMarkProcessed, handleDelete,
     } = useDocuments(companyId)
+
+    const { activeCompany } = useCompany()
+    const [qrScanOpen, setQrScanOpen] = useState(false)
 
     if (loading) {
         return <Box display="flex" alignItems="center" justifyContent="center" flex={1}><CircularProgress /></Box>
@@ -73,6 +80,12 @@ export const DocumentsPage = ({ companyId }: { companyId: string }) => {
                         <MenuItem onClick={() => { setUploadMenuOpen(false); fileInputRef.current?.click() }}>Jeden súbor</MenuItem>
                         <MenuItem onClick={() => { setUploadMenuOpen(false); multiInputRef.current?.click() }}>Viacero súborov</MenuItem>
                         <MenuItem onClick={() => { setUploadMenuOpen(false); folderInputRef.current?.click() }}>Priečinok (vrátane podpriečinkov)</MenuItem>
+                        <MenuItem onClick={() => { setUploadMenuOpen(false); setQrScanOpen(true) }}
+                            sx={{ gap: 1 }}
+                        >
+                            <QrCode fontSize="small" sx={{ color: 'text.secondary' }} />
+                            Skenovať QR kód z fotografie
+                        </MenuItem>
                     </Menu>
                     <input ref={fileInputRef} type="file" hidden onChange={handleFilesChange} />
                     <input ref={multiInputRef} type="file" hidden multiple onChange={handleFilesChange} />
@@ -301,6 +314,27 @@ export const DocumentsPage = ({ companyId }: { companyId: string }) => {
                                                             }}
                                                         >
                                                             <StorageOutlined fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {d.type === 'receipt' && (d.status === 'downloaded' || d.filePath) && !d.receiptId && (
+                                                    <Tooltip title="Importovať do Blokov">
+                                                        <IconButton size="small" color="primary"
+                                                            onClick={async () => {
+                                                                const rid = await handleImportToReceipts(d)
+                                                                if (rid) navigate(`/${configId}/receipts`, { state: { highlightId: rid } })
+                                                            }}
+                                                        >
+                                                            <Receipt fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {d.type === 'receipt' && d.receiptId && (
+                                                    <Tooltip title="Zobraziť blok v Blokoch">
+                                                        <IconButton size="small" color="success"
+                                                            onClick={() => navigate(`/${configId}/receipts`, { state: { highlightId: d.receiptId } })}
+                                                        >
+                                                            <OpenInNew fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
                                                 )}
@@ -553,6 +587,21 @@ export const DocumentsPage = ({ companyId }: { companyId: string }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <QrScanDialog
+                open={qrScanOpen}
+                onClose={() => setQrScanOpen(false)}
+                onSave={async (file, ekasaId, ekasaData) => {
+                    if (!configId || !activeCompany?.id) return
+                    const photoBase64 = await fileToBase64(file)
+                    await window.api.receipt.create(
+                        configId, activeCompany.id,
+                        ekasaId, JSON.stringify(ekasaData ?? {}),
+                        photoBase64, buildReceiptFileName(ekasaData, file.name),
+                    )
+                    window.dispatchEvent(new CustomEvent('receipts-changed'))
+                }}
+            />
         </Box>
     )
 }

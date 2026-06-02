@@ -2,7 +2,7 @@ import { Avatar, Badge, Box, Button, Grid, IconButton, Paper, Stack, Tooltip, Ty
 import {
     AccountBalance, BadgeOutlined, Backup, Business, Chat,
     EmailOutlined, Folder, History, Link, LocalAtm, LocationOnOutlined,
-    MoveToInbox, NoteAdd, PhoneOutlined, ReceiptLong, WarningAmberOutlined,
+    MoveToInbox, NoteAdd, PhoneOutlined, Receipt, ReceiptLong, WarningAmberOutlined,
 } from "@mui/icons-material";
 import { useFirebaseAuth } from "../context/firebaseAuth";
 import { useChat } from "../hooks/useChat";
@@ -28,6 +28,7 @@ const tiles: Tile[] = [
     { label: "Bankové pohyby",    icon: AccountBalance, color: "#00695c", page: "bank"             },
     { label: "Pokladňa",          icon: LocalAtm,      color: "#6a1b9a", page: "cash"              },
     { label: "Dokumenty",         icon: Folder,        color: "#0277bd", page: "documents"         },
+    { label: "Bloky",             icon: Receipt,       color: "#558b2f", page: "receipts"          },
     { label: "Údaje firmy",       icon: Business,      color: "#2e7d32", page: "edit"              },
 ];
 

@@ -49,3 +49,50 @@ export const fileToBase64 = (file: File): Promise<string> =>
         reader.onerror = reject
         reader.readAsDataURL(file)
     })
+
+const fmtDateParts = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`
+}
+
+export const buildReceiptFileName = (
+    ekasaData: Record<string, unknown> | null | undefined,
+    fallback: string,
+    ekasaId?: string,
+): string => {
+    const sanitize = (s: string) => s.replace(/[/\\:*?"<>|,]/g, '').replace(/\s+/g, '-').trim()
+    const ext = fallback.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const org  = ekasaData?.organizationName as string | undefined
+    const date = ekasaData?.createDate as string | undefined
+
+    let datePart = ''
+    if (date) {
+        const m = String(date).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/)
+        datePart = m
+            ? `${m[3]}-${m[2]}-${m[1]}-${m[4]}-${m[5]}${m[6] ? `-${m[6]}` : ''}`
+            : String(date).replace(/[T\s]/g, '-').replace(/:/g, '-')
+    }
+
+    if (org || datePart) {
+        const parts = ['blok', org ? sanitize(org) : '', datePart].filter(Boolean)
+        return `${parts.join('-')}.${ext}`
+    }
+
+    // No org/date — try receiptNumber as identifier
+    const num = ekasaData?.receiptNumber as string | undefined
+    if (num) return `blok-${sanitize(num)}.${ext}`
+
+    // If ekasaId (QR text) is available, use its short suffix
+    if (ekasaId) {
+        const suffix = ekasaId.slice(-8)
+        return `blok-${fmtDateParts(new Date())}-${suffix}.${ext}`
+    }
+
+    // If fallback is a portal-generated timestamp (blok-1234567890.jpg), convert it to a readable date
+    const tsMatch = fallback.match(/^blok-(\d{10,13})\.(.+)$/)
+    if (tsMatch) {
+        return `blok-${fmtDateParts(new Date(Number(tsMatch[1])))}.${tsMatch[2]}`
+    }
+
+    return fallback
+}

@@ -74,6 +74,14 @@ contextBridge.exposeInMainWorld("api", {
     show: (title: string, body: string) => ipcRenderer.invoke('notification:show', title, body),
   },
 
+  receipt: {
+    create:    (configId: string, companyId: number, ekasaId: string, ekasaDataJson: string, photoBase64?: string, photoFileName?: string, notes?: string) =>
+                 ipcRenderer.invoke('receipt:create', configId, companyId, ekasaId, ekasaDataJson, photoBase64, photoFileName, notes),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke('receipt:byCompany', configId, companyId),
+    delete:    (configId: string, id: number) => ipcRenderer.invoke('receipt:delete', configId, id),
+    loadPhoto: (configId: string, photoPath: string) => ipcRenderer.invoke('receipt:loadPhoto', configId, photoPath),
+  },
+
   invite: {
     isConfigured: () => ipcRenderer.invoke("invite:isConfigured"),
     setup:        () => ipcRenderer.invoke("invite:setup"),

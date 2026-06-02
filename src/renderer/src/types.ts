@@ -76,6 +76,13 @@ declare global {
 				show: (title: string, body: string) => Promise<void>;
 			};
 
+			receipt: {
+				create:    (configId: string, companyId: number, ekasaId: string, ekasaDataJson: string, photoBase64?: string, photoFileName?: string, notes?: string) => Promise<any>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				delete:    (configId: string, id: number) => Promise<void>;
+				loadPhoto: (configId: string, photoPath: string) => Promise<string | null>;
+			};
+
 			invite: {
 				isConfigured: () => Promise<boolean>;
 				setup:        () => Promise<{ success: boolean; error?: string }>;

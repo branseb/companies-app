@@ -376,6 +376,7 @@ const TYPE_FOLDERS: Record<string, string> = {
   invoice_received: 'Prijaté faktúry',
   bank_statement:   'Výpisy z účtu',
   travel:           'Cestovné',
+  receipt:          'Bloky',
   other:            'Ostatné',
 }
 
