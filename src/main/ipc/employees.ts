@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { handle } from './ipcHandle'
 
-type EmployeeRecord = { id: number; name: string; address?: string; defaultLocation?: string }
+type EmployeeRecord = { id: number; name: string; address?: string; defaultLocation?: string; defaultFuelConsumption?: number }
 type Store = Record<string, EmployeeRecord[]>
 
 const filePath = () => path.join(app.getPath('userData'), 'employees.json')
@@ -28,16 +28,16 @@ export const registerEmployeesIpc = () => {
         return (store[configId] ?? []).sort((a, b) => a.name.localeCompare(b.name, 'sk'))
     })
 
-    handle('employee:create', async (configId: string, data: { name: string; address?: string; defaultLocation?: string }) => {
+    handle('employee:create', async (configId: string, data: { name: string; address?: string; defaultLocation?: string; defaultFuelConsumption?: number }) => {
         const store = readStore()
         const list = store[configId] ?? []
-        const emp: EmployeeRecord = { id: nextId(list), name: data.name, address: data.address, defaultLocation: data.defaultLocation }
+        const emp: EmployeeRecord = { id: nextId(list), name: data.name, address: data.address, defaultLocation: data.defaultLocation, defaultFuelConsumption: data.defaultFuelConsumption }
         store[configId] = [...list, emp]
         writeStore(store)
         return emp
     })
 
-    handle('employee:update', async (configId: string, id: number, data: { name: string; address?: string; defaultLocation?: string }) => {
+    handle('employee:update', async (configId: string, id: number, data: { name: string; address?: string; defaultLocation?: string; defaultFuelConsumption?: number }) => {
         const store = readStore()
         const list = store[configId] ?? []
         store[configId] = list.map(e => e.id === id ? { ...e, ...data } : e)
