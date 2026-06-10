@@ -7,6 +7,7 @@ import { Company } from "./entities/company";
 import { Invoice } from "./entities/invoice";
 import { AuditLog } from "./entities/auditLog";
 import { Receipt } from "./entities/receipt";
+import { TravelOrder } from "./entities/travelOrder";
 import { readConfigs } from "../ipc/companyConfig";
 
 export type CompanyConfig = {
@@ -15,7 +16,7 @@ export type CompanyConfig = {
     connectionString: string;
 };
 
-const ENTITIES = [BankAccount, BankTransaction, CashRegister, CashEntry, Company, Invoice, AuditLog, Receipt];
+const ENTITIES = [BankAccount, BankTransaction, CashRegister, CashEntry, Company, Invoice, AuditLog, Receipt, TravelOrder];
 
 const isMssql = (url: string) => url.startsWith("mssql://") || url.startsWith("sqlserver://");
 

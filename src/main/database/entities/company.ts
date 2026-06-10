@@ -34,4 +34,7 @@ export class Company {
 
     @Column({ nullable: true, type: 'nvarchar', length: 'max' })
     phone?: string;
+
+    @Column({ nullable: true, type: 'nvarchar', length: 'max' })
+    previousIcos?: string;
 }

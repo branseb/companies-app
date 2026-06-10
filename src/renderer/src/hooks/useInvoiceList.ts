@@ -24,8 +24,8 @@ export const useInvoiceList = (type: "issued" | "received", refresh: boolean, on
         if (!activeCompany) return;
         setLoading(true);
         const fetch = type === "issued"
-            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.ico)
-            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico);
+            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.id!)
+            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.id!);
         fetch.then((data: any[]) => setInvoices(data.map(i => ({ ...i, id: String(i.id) })))).finally(() => setLoading(false));
     }, [type, activeCompany, activeConfigId]);
 

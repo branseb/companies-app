@@ -13,6 +13,7 @@ import { AuditLogPage } from "./AuditLogPage";
 import { ChatPage } from "./ChatPage"
 import { DocumentsPage } from "./DocumentsPage";
 import { ReceiptsPage } from "./ReceiptsPage";
+import { TravelOrdersPage } from "./TravelOrdersPage";
 
 export const CompanyDashboard = () => {
     const { configId } = useParams<{ configId: string }>();
@@ -99,7 +100,8 @@ export const CompanyDashboard = () => {
                     <Route path="audit" element={<AuditLogPage />} />
                     <Route path="chat"      element={<ChatPage companyId={configId!} />} />
                     <Route path="documents" element={<DocumentsPage companyId={configId!} />} />
-                    <Route path="receipts"  element={<ReceiptsPage  companyId={configId!} />} />
+                    <Route path="receipts"       element={<ReceiptsPage      companyId={configId!} />} />
+                    <Route path="travel-orders" element={<TravelOrdersPage  companyId={configId!} />} />
                     <Route path="*" element={<Navigate to={base} replace />} />
                 </Routes>
             </Container>

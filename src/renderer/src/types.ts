@@ -10,8 +10,9 @@ declare global {
 				get: (configId: string, id: string) => Promise<any>;
 				nextId: (configId: string, supplierIco: string) => Promise<string>;
 				nextDfId: (configId: string) => Promise<string>;
-				byCompany: (configId: string, ico: string) => Promise<any[]>;
-				byCustomer: (configId: string, ico: string) => Promise<any[]>;
+				byCompany: (configId: string, companyId: number) => Promise<any[]>;
+				bySupplierIco: (configId: string, supplierIco: string) => Promise<any[]>;
+				byCustomer: (configId: string, companyId: number) => Promise<any[]>;
 				knownParties: (configId: string) => Promise<any[]>;
 				markPaid: (configId: string, id: number, paid: boolean) => Promise<void>;
 				delete: (configId: string, id: number) => Promise<void>;

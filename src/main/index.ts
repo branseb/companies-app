@@ -14,6 +14,9 @@ import { registerInviteIpc } from './ipc/invite';
 import { registerNotificationsIpc } from './ipc/notifications';
 import { registerDocumentsIpc } from './ipc/documents';
 import { registerReceiptsIpc } from './ipc/receipts';
+import { registerTravelOrdersIpc } from './ipc/travelOrders';
+import { registerTravelRatesIpc } from './ipc/travelRates';
+import { registerEmployeesIpc } from './ipc/employees';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -51,6 +54,9 @@ app.whenReady().then(async () => {
   registerNotificationsIpc();
   registerDocumentsIpc();
   registerReceiptsIpc();
+  registerTravelOrdersIpc();
+  registerTravelRatesIpc();
+  registerEmployeesIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });

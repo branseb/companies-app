@@ -141,6 +141,7 @@ export const registerTravelOrdersIpc = () => {
             returnDate:          order.returnDate,
             returnTime:          order.returnTime,
             transportType:       order.transportType,
+            ecv:                 order.ecv,
             distanceKm:          order.distanceKm,
             fuelConsumption:     order.fuelConsumption,
             fuelPricePerLiter:   order.fuelPricePerLiter,

@@ -6,6 +6,21 @@ import {
     isFirebaseConfigured, adminDb, adminAuth, getPortalUrl, setPortalUrl,
     SERVICE_ACCOUNT_PATH, FieldValue, Timestamp,
 } from '../firebase/admin'
+import { dbManager } from '../database/database-manager'
+import { Company } from '../database/entities/company'
+
+const syncCompanyToFirestore = async (configId: string) => {
+    const db = await dbManager.getDB(configId)
+    const company = (await db.getRepository(Company).find())[0]
+    if (!company) return
+    await adminDb().collection('companies').doc(configId).set({
+        name:    company.name    ?? '',
+        address: company.address ?? '',
+        zip:     company.zip     ?? '',
+        city:    company.city    ?? '',
+        ico:     company.ico     ?? '',
+    }, { merge: true })
+}
 
 export const registerInviteIpc = () => {
 
@@ -49,6 +64,8 @@ export const registerInviteIpc = () => {
             used: false,
             usedByUid: null,
         })
+
+        await syncCompanyToFirestore(companyId)
 
         const link = `${getPortalUrl()}/invite/${code}`
         return { code, link }

@@ -31,6 +31,22 @@ export function setPortalUrl(url: string): void {
     fs.writeFileSync(SETTINGS_PATH(), JSON.stringify({ ...settings, portalUrl: url }, null, 2))
 }
 
+export function isPortalEnabled(configId: string): boolean {
+    if (!isFirebaseConfigured()) return false
+    try {
+        const s = JSON.parse(fs.readFileSync(SETTINGS_PATH(), 'utf-8'))
+        return s.portalEnabled?.[configId] === true
+    } catch { return false }
+}
+
+export function setPortalEnabled(configId: string, enabled: boolean): void {
+    let settings: Record<string, unknown> = {}
+    try { settings = JSON.parse(fs.readFileSync(SETTINGS_PATH(), 'utf-8')) } catch { /* first run */ }
+    const portalEnabled = (settings.portalEnabled as Record<string, boolean> | undefined) ?? {}
+    portalEnabled[configId] = enabled
+    fs.writeFileSync(SETTINGS_PATH(), JSON.stringify({ ...settings, portalEnabled }, null, 2))
+}
+
 function ensureInitialized(): void {
     if (getApps().length > 0) return
     if (!isFirebaseConfigured()) throw new Error('Firebase nie je nakonfigurovaný')
