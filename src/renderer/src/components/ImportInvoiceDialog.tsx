@@ -11,6 +11,7 @@ import { useCompany } from '../context/company'
 import { mapToEN16931 } from '../utils/mapToEN16931'
 import { InvoiceFormContent } from './InvoiceFormContent'
 import type { SimpleInvoice } from '../models/SimpleInvoice'
+import { today, addDays } from '@e-companies/shared'
 
 const scrollbar = {
   '&::-webkit-scrollbar':       { width: 10, height: 10 },
@@ -40,8 +41,7 @@ type Props = {
   onGoToDuplicate?: () => void
 }
 
-const today = () => new Date().toISOString().split('T')[0]
-const due14 = () => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().split('T')[0] }
+const due14 = () => addDays(today(), 14)
 
 export function ImportInvoiceDialog({ open, base64, fileName, docType, onClose, onImported, onGoToDuplicate }: Props) {
   const { activeCompany, activeConfigId } = useCompany()

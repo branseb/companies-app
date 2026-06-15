@@ -4,6 +4,7 @@ import { Company } from "../database/entities/company";
 import { handle } from "./ipcHandle";
 import { logAction } from "./auditLog";
 import { dbManager } from "../database/database-manager";
+import { today } from "@e-companies/shared";
 
 export const registerInvoiceIpc = () => {
 
@@ -100,7 +101,7 @@ export const registerInvoiceIpc = () => {
     handle("invoice:mark-paid", async (configId: string, id: number, paid: boolean) => {
         const db = await dbManager.getDB(configId);
         const repo = db.getRepository(Invoice);
-        const paidDate = paid ? new Date().toISOString().split("T")[0] : undefined;
+        const paidDate = paid ? today() : undefined;
         await repo.update(id, { paid, paidDate: paidDate ?? (null as any) });
         await logAction(db, "", paid ? "paid" : "unpaid", "invoice", id, {});
     });

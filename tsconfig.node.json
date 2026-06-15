@@ -8,7 +8,11 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "paths": {
+      "@e-companies/shared": ["../e-companies-shared/index.ts"],
+      "@e-companies/shared/*": ["../e-companies-shared/*"]
+    }
   },
-  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"]
+  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*", "../e-companies-shared/**/*"]
 }

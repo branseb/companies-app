@@ -8,6 +8,7 @@ import { CurrencySelect } from "./currencySelect";
 import { FormSection } from "./FormSection";
 import { useCompany } from "../context/company";
 import type { BankAccount } from "../models/bankTransaction";
+import { today } from "@e-companies/shared";
 
 type FormData = {
     date: string;
@@ -22,8 +23,6 @@ type FormData = {
     specificSymbol: string;
     note: string;
 }
-
-const today = () => new Date().toISOString().split("T")[0];
 
 const empty = (): FormData => ({
     date: today(),

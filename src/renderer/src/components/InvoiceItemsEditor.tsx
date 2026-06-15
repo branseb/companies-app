@@ -6,8 +6,7 @@ import {
 } from "@mui/material";
 import { Add, Delete } from "@mui/icons-material";
 import type { InvoiceItem } from "../models/SimpleInvoice";
-
-const TAX_RATES = [0, 5, 10, 19, 20, 23];
+import { TAX_RATES } from "@e-companies/shared";
 const UNITS = ["ks", "hod", "deň", "kg", "g", "l", "m", "m²", "m³"];
 
 type Props = {
