@@ -36,9 +36,18 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
     useEffect(() => { load() }, [activeConfigId, activeCompany?.id])
 
     useEffect(() => {
-        ;(window.api as any).travelRates.get().then((r: StravneRates | null) => {
-            if (r) setRates(r)
-        })
+        const RATES_URL = import.meta.env.VITE_RATES_URL ?? 'https://e-companies-portal.vercel.app/stravne-rates.json'
+        fetch(RATES_URL)
+            .then(r => r.json())
+            .then((data: StravneRates) => {
+                setRates(data)
+                ;(window.api as any).travelRates.save(data)
+            })
+            .catch(() => {
+                ;(window.api as any).travelRates.get().then((r: StravneRates | null) => {
+                    if (r) setRates(r)
+                })
+            })
         ;(window.api as any).travelPreferences.get().then((p: TravelPreferences | null) => {
             if (p) setPreferences(p)
         })
@@ -101,14 +110,6 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
         await (window.api as any).travelPreferences.save(p)
     }
 
-    const handleRatesChange = async (r: StravneRates) => {
-        setRates(r)
-        await (window.api as any).travelRates.save(r)
-        if (activeConfigId) {
-            try { await (window.api as any).portal.syncRates(activeConfigId, r) } catch { /* portal nemusí byť povolený */ }
-        }
-    }
-
     const handleCompanyRatesChange = async (r: CompanyRateConfig) => {
         if (!activeConfigId) return
         setCompanyRates(r)
@@ -166,7 +167,6 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
             onDelete={handleDelete}
             onGeneratePdf={handleGeneratePdf}
             ratesHistory={rates}
-            onRatesChange={handleRatesChange}
             companyRates={companyRates}
             onCompanyRatesChange={handleCompanyRatesChange}
             employees={employees}
