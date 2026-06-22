@@ -148,6 +148,7 @@ export const registerTravelOrdersIpc = () => {
             advanceAmount:       order.advanceAmount,
             advances:            order.advances as any,
             stravneAmount:       order.stravneAmount,
+            stravneMultiplier:   order.stravneMultiplier,
             actualExpenses:      order.actualExpenses,
             currency:            order.currency!,
             freeRanajky:         order.freeRanajky,
@@ -162,6 +163,7 @@ export const registerTravelOrdersIpc = () => {
             includeAdminFields:  order.includeAdminFields ?? true,
             applyAmortization:   order.applyAmortization ?? true,
             applyFuelCost:       order.applyFuelCost ?? true,
+            isElectric:          order.isElectric ?? null,
         })
 
         const safeName = order.employee!.replace(/[/\\:*?"<>|]/g, '_')

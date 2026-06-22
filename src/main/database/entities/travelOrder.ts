@@ -67,6 +67,9 @@ export class TravelOrder {
     stravneAmount?: number
 
     @Column({ type: 'float', nullable: true })
+    stravneMultiplier?: number
+
+    @Column({ type: 'float', nullable: true })
     actualExpenses?: number
 
     @Column({ type: 'nvarchar', length: 10, default: 'EUR' })
@@ -98,6 +101,9 @@ export class TravelOrder {
 
     @Column({ type: 'bit', nullable: true })
     applyFuelCost?: boolean | null
+
+    @Column({ type: 'bit', nullable: true })
+    isElectric?: boolean | null
 
     @Column({ type: 'bit', nullable: true })
     useExchangeRates?: boolean | null

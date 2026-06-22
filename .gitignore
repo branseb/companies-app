@@ -7,3 +7,4 @@ node_modules/
 .claude
 .env
 firebase-service-account.json
+graphify-out/
