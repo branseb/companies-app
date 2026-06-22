@@ -23,11 +23,13 @@ const loadLegalRates = () => {
 const buildRatesSnapshot = (configId: string, data: Partial<TravelOrder>) => {
     const travelDate = data.departureDate
     if (!travelDate) return {}
+    const empRates = data.employeeId != null ? readEmployeeRates(configId, data.employeeId) : null
     const effective = resolveRates(
         travelDate,
         loadLegalRates(),
         readCompanyRates(configId),
-        data.employeeId != null ? readEmployeeRates(configId, data.employeeId) : null,
+        empRates,
+        empRates?.isMobileWorker ?? false,
     )
     return {
         ratesSnapshot:          effective,
