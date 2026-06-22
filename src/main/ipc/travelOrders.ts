@@ -6,9 +6,35 @@ import { Company } from '../database/entities/company'
 import { dbManager } from '../database/database-manager'
 import { handle } from './ipcHandle'
 import { logAction } from './auditLog'
-import { generateTravelOrderPdf } from '@e-companies/shared'
+import { generateTravelOrderPdf, resolveRates, DEFAULT_STRAVNE_RATES } from '@e-companies/shared'
 import { adminDb, isPortalEnabled, setPortalEnabled } from '../firebase/admin'
 import { migrateEmployeesToFirestore } from './employees'
+import { readCompanyRates } from './companyRates'
+import { readEmployeeRates } from './employeeRates'
+
+const loadLegalRates = () => {
+    try {
+        const p = path.join(app.getPath('userData'), 'travelRates.json')
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'))
+    } catch { /* ignore */ }
+    return DEFAULT_STRAVNE_RATES
+}
+
+const buildRatesSnapshot = (configId: string, data: Partial<TravelOrder>) => {
+    const travelDate = data.departureDate
+    if (!travelDate) return {}
+    const effective = resolveRates(
+        travelDate,
+        loadLegalRates(),
+        readCompanyRates(configId),
+        data.employeeId != null ? readEmployeeRates(configId, data.employeeId) : null,
+    )
+    return {
+        ratesSnapshot:          effective,
+        kmRateUsed:             effective.kmRate,
+        ratesAlgorithmVersion:  effective.algorithmVersion,
+    }
+}
 
 // ── Firestore helpers ────────────────────────────────────────────────────────
 
@@ -63,7 +89,7 @@ export const registerTravelOrdersIpc = () => {
         const db = await dbManager.getDB(configId)
         const company = await db.getRepository(Company).findOneBy({ id: companyId })
         if (!company) throw new Error('Firma nenájdená')
-        const order = db.getRepository(TravelOrder).create({ ...data, createdAt: new Date().toISOString(), company })
+        const order = db.getRepository(TravelOrder).create({ ...data, ...buildRatesSnapshot(configId, data), createdAt: new Date().toISOString(), company })
         const saved = await db.getRepository(TravelOrder).save(order)
         await logAction(db, company.ico, 'create', 'travelOrder', saved.id, { employee: saved.employee, destination: saved.destination })
         return saved
@@ -77,7 +103,7 @@ export const registerTravelOrdersIpc = () => {
         }
         const db = await dbManager.getDB(configId)
         const { company: _c, ...rest } = data as any
-        return db.getRepository(TravelOrder).update(id as number, rest)
+        return db.getRepository(TravelOrder).update(id as number, { ...rest, ...buildRatesSnapshot(configId, data) })
     })
 
     handle('travelOrder:delete', async (configId: string, id: number | string) => {
@@ -186,6 +212,12 @@ export const registerTravelOrdersIpc = () => {
     handle('portal:syncRates', async (configId: string, rates: unknown) => {
         await adminDb().collection('companies').doc(configId)
             .collection('settings').doc('travelRates').set({ rates })
+        return { success: true }
+    })
+
+    handle('portal:syncCompanyRates', async (configId: string, rates: unknown) => {
+        await adminDb().collection('companies').doc(configId)
+            .collection('settings').doc('companyRates').set(rates as object)
         return { success: true }
     })
 

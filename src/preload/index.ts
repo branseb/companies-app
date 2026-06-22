@@ -95,6 +95,17 @@ contextBridge.exposeInMainWorld("api", {
     save: (rates: unknown) => ipcRenderer.invoke('travelRates:save', rates),
   },
 
+  companyRates: {
+    get:  (configId: string) => ipcRenderer.invoke('companyRates:get', configId),
+    save: (configId: string, rates: unknown) => ipcRenderer.invoke('companyRates:save', configId, rates),
+  },
+
+  employeeRates: {
+    getAll: (configId: string) => ipcRenderer.invoke('employeeRates:getAll', configId),
+    save:   (configId: string, employeeId: number | string, rates: unknown) => ipcRenderer.invoke('employeeRates:save', configId, employeeId, rates),
+    delete: (configId: string, employeeId: number | string) => ipcRenderer.invoke('employeeRates:delete', configId, employeeId),
+  },
+
   travelPreferences: {
     get:  () => ipcRenderer.invoke('travelPreferences:get'),
     save: (prefs: unknown) => ipcRenderer.invoke('travelPreferences:save', prefs),
@@ -113,7 +124,8 @@ contextBridge.exposeInMainWorld("api", {
     setEnabled:   (configId: string, enabled: boolean) => ipcRenderer.invoke('portal:setEnabled', configId, enabled),
     migrate:      (configId: string, companyId: number) => ipcRenderer.invoke('portal:migrate', configId, companyId),
     syncCompany:  (configId: string) => ipcRenderer.invoke('portal:syncCompany', configId),
-    syncRates:    (configId: string, rates: unknown) => ipcRenderer.invoke('portal:syncRates', configId, rates),
+    syncRates:         (configId: string, rates: unknown) => ipcRenderer.invoke('portal:syncRates', configId, rates),
+    syncCompanyRates:  (configId: string, rates: unknown) => ipcRenderer.invoke('portal:syncCompanyRates', configId, rates),
   },
 
   invite: {

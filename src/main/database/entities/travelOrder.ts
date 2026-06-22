@@ -138,6 +138,24 @@ export class TravelOrder {
     })
     advances?: Array<{ amount: number; currency: string }> | null
 
+    @Column({
+        type: 'nvarchar', length: 'max', nullable: true,
+        transformer: {
+            to:   (v: unknown) => (v != null ? JSON.stringify(v) : null),
+            from: (v: string | null) => { try { return v ? JSON.parse(v) : null } catch { return null } },
+        },
+    })
+    ratesSnapshot?: unknown
+
+    @Column({ type: 'float', nullable: true })
+    kmRateUsed?: number | null
+
+    @Column({ type: 'nvarchar', length: 20, nullable: true })
+    ratesAlgorithmVersion?: string | null
+
+    @Column({ type: 'int', nullable: true })
+    employeeId?: number | null
+
     @Column({ type: 'nvarchar', length: 30 })
     createdAt!: string
 

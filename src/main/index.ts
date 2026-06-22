@@ -17,6 +17,8 @@ import { registerReceiptsIpc } from './ipc/receipts';
 import { registerTravelOrdersIpc } from './ipc/travelOrders';
 import { registerTravelRatesIpc } from './ipc/travelRates';
 import { registerEmployeesIpc } from './ipc/employees';
+import { registerCompanyRatesIpc } from './ipc/companyRates';
+import { registerEmployeeRatesIpc } from './ipc/employeeRates';
 import { dbManager } from './database/database-manager';
 
 function createWindow() {
@@ -57,6 +59,8 @@ app.whenReady().then(async () => {
   registerTravelOrdersIpc();
   registerTravelRatesIpc();
   registerEmployeesIpc();
+  registerCompanyRatesIpc();
+  registerEmployeeRatesIpc();
   const win = createWindow();
   registerWindowIpc(win);
 });
