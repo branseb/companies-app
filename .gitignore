@@ -3,6 +3,8 @@ dist/
 release/
 node_modules/
 *.db
+*.tsbuildinfo
 .claude
 .env
 firebase-service-account.json
+graphify-out/

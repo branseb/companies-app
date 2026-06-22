@@ -8,7 +8,6 @@ import { Add, Delete, ExpandLess, ExpandMore, Receipt, Visibility } from '@mui/i
 import { useLocation } from 'react-router-dom'
 import { useCompany } from '../context/company'
 import { QrScanDialog, EkasaTable, fileToBase64 } from '../components/QrScanDialog'
-import { buildReceiptFileName } from '../utils/documentUtils'
 
 type ReceiptRow = {
     id: number
@@ -262,13 +261,14 @@ export const ReceiptsPage = ({ companyId }: { companyId: string }) => {
             <QrScanDialog
                 open={scanOpen}
                 onClose={() => setScanOpen(false)}
+                cameraEnabled={false}
                 onSave={async (file, ekasaId, ekasaData) => {
                     if (!activeConfigId || !activeCompany?.id) return
                     const photoBase64 = await fileToBase64(file)
                     await window.api.receipt.create(
                         activeConfigId, activeCompany.id,
-                        ekasaId, JSON.stringify(ekasaData ?? {}),
-                        photoBase64, buildReceiptFileName(ekasaData, file.name),
+                        ekasaId ?? '', JSON.stringify(ekasaData ?? {}),
+                        photoBase64, file.name,
                     )
                     await load()
                 }}

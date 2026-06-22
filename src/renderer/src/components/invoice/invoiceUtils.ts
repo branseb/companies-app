@@ -1,4 +1,7 @@
 import type { InvoiceRow } from "./invoiceTypes";
+import { fmtCurrency } from "@e-companies/shared";
+
+export { fmtCurrency as fmtMoney }
 
 export function tryParse(json: string) {
     try { return JSON.parse(json); } catch { return null; }
@@ -15,9 +18,6 @@ export function isOverdue(inv: InvoiceRow): boolean {
     return new Date(inv.dueDate) < new Date(new Date().toDateString());
 }
 
-export function fmtMoney(n: number, currency: string) {
-    return new Intl.NumberFormat("sk-SK", { style: "currency", currency, minimumFractionDigits: 2 }).format(n);
-}
 
 export function computeTotal(itemsJson: string): number {
     const items = tryParse(itemsJson) ?? [];

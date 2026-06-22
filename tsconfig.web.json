@@ -13,7 +13,11 @@
     "jsx": "react-jsx",
     "strict": true,
     "composite": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@e-companies/shared": ["../e-companies-shared/index.ts"],
+      "@e-companies/shared/*": ["../e-companies-shared/*"]
+    }
   },
-  "include": ["src/renderer/src/**/*"]
+  "include": ["src/renderer/src/**/*", "../e-companies-shared/**/*"]
 }

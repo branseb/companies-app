@@ -22,7 +22,7 @@ import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { NoteCell } from '../components/documents/NoteCell'
 import { FolderTree } from '../components/documents/FolderTree'
-import { buildFolderTree, fmtSize, fmtDocDate, buildReceiptFileName } from '../utils/documentUtils'
+import { buildFolderTree, fmtSize, fmtDocDate } from '../utils/documentUtils'
 import { TYPE_LABELS, STATUS_COLOR, STATUS_LABEL, type DocumentType } from '../models/document'
 import { useDocuments } from '../hooks/useDocuments'
 import { useCompany } from '../context/company'
@@ -591,13 +591,14 @@ export const DocumentsPage = ({ companyId }: { companyId: string }) => {
             <QrScanDialog
                 open={qrScanOpen}
                 onClose={() => setQrScanOpen(false)}
+                cameraEnabled={false}
                 onSave={async (file, ekasaId, ekasaData) => {
                     if (!configId || !activeCompany?.id) return
                     const photoBase64 = await fileToBase64(file)
                     await window.api.receipt.create(
                         configId, activeCompany.id,
-                        ekasaId, JSON.stringify(ekasaData ?? {}),
-                        photoBase64, buildReceiptFileName(ekasaData, file.name),
+                        ekasaId ?? '', JSON.stringify(ekasaData ?? {}),
+                        photoBase64, file.name,
                     )
                     window.dispatchEvent(new CustomEvent('receipts-changed'))
                 }}

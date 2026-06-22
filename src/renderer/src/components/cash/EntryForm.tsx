@@ -3,6 +3,7 @@ import { Button, MenuItem, Paper, Select, Stack, TextField } from "@mui/material
 import { SaveOutlined } from "@mui/icons-material";
 import { useCompany } from "../../context/company";
 import type { CashRegister } from "../../models/cashEntry";
+import { today } from "@e-companies/shared";
 
 type EntryFormProps = {
     registers: CashRegister[];
@@ -10,8 +11,6 @@ type EntryFormProps = {
     defaultCurrency: string;
     onAdd: () => void;
 }
-
-const today = () => new Date().toISOString().split("T")[0];
 
 export const EntryForm: React.FC<EntryFormProps> = ({ registers, defaultRegisterId, defaultCurrency, onAdd }) => {
     const { activeCompany, activeConfigId } = useCompany();

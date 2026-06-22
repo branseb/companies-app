@@ -4,6 +4,7 @@ import { useSnackbar } from "./useSnackbar";
 import { parseInvoiceXML } from "../utils/parseInvoiceXML";
 import type { EN16931Invoice } from "../models/EN16931Invoice";
 import type { InvoiceRow } from "../components/invoice/invoiceTypes";
+import { today } from "@e-companies/shared";
 
 export const useInvoiceList = (type: "issued" | "received", refresh: boolean, onAdd?: () => void) => {
     const { activeCompany, activeConfigId } = useCompany();
@@ -24,8 +25,8 @@ export const useInvoiceList = (type: "issued" | "received", refresh: boolean, on
         if (!activeCompany) return;
         setLoading(true);
         const fetch = type === "issued"
-            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.ico)
-            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico);
+            ? window.api.invoice.byCompany(activeConfigId!, activeCompany.id!)
+            : window.api.invoice.byCustomer(activeConfigId!, activeCompany.id!);
         fetch.then((data: any[]) => setInvoices(data.map(i => ({ ...i, id: String(i.id) })))).finally(() => setLoading(false));
     }, [type, activeCompany, activeConfigId]);
 
@@ -61,7 +62,7 @@ export const useInvoiceList = (type: "issued" | "received", refresh: boolean, on
     const handleTogglePaid = async (inv: InvoiceRow, e: React.MouseEvent) => {
         e.stopPropagation();
         const newPaid = !inv.paid;
-        const newPaidDate = newPaid ? new Date().toISOString().split("T")[0] : undefined;
+        const newPaidDate = newPaid ? today() : undefined;
         await window.api.invoice.markPaid(activeConfigId!, Number(inv.id), newPaid);
         setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, paid: newPaid, paidDate: newPaidDate } : i));
     };

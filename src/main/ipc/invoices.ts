@@ -1,7 +1,10 @@
+import { In } from "typeorm";
 import { Invoice } from "../database/entities/invoice";
+import { Company } from "../database/entities/company";
 import { handle } from "./ipcHandle";
 import { logAction } from "./auditLog";
 import { dbManager } from "../database/database-manager";
+import { today } from "@e-companies/shared";
 
 export const registerInvoiceIpc = () => {
 
@@ -38,18 +41,36 @@ export const registerInvoiceIpc = () => {
         return db.getRepository(Invoice).findOne({ where: { id }, relations: ["company"] });
     });
 
-    handle("invoice:by-company", async (configId: string, supplierIco: string) => {
+    const getCompanyIcos = async (db: any, companyId: number): Promise<string[]> => {
+        const company = await db.getRepository(Company).findOneBy({ id: companyId });
+        if (!company) return [];
+        const prev: string[] = JSON.parse(company.previousIcos ?? '[]');
+        return [company.ico, ...prev].filter(Boolean);
+    };
+
+    handle("invoice:by-company", async (configId: string, companyId: number) => {
         const db = await dbManager.getDB(configId);
+        const icos = await getCompanyIcos(db, companyId);
+        if (!icos.length) return [];
         return db.getRepository(Invoice).find({
-            where: { supplierIco: stripIco(supplierIco) },
+            where: { supplierIco: In(icos) },
             relations: ["company"],
         });
     });
 
-    handle("invoice:by-customer", async (configId: string, customerIco: string) => {
+    handle("invoice:by-supplier-ico", async (configId: string, supplierIco: string) => {
         const db = await dbManager.getDB(configId);
         return db.getRepository(Invoice).find({
-            where: { customerIco: stripIco(customerIco) },
+            where: { supplierIco: stripIco(supplierIco) },
+        });
+    });
+
+    handle("invoice:by-customer", async (configId: string, companyId: number) => {
+        const db = await dbManager.getDB(configId);
+        const icos = await getCompanyIcos(db, companyId);
+        if (!icos.length) return [];
+        return db.getRepository(Invoice).find({
+            where: { customerIco: In(icos) },
             relations: ["company"],
         });
     });
@@ -80,7 +101,7 @@ export const registerInvoiceIpc = () => {
     handle("invoice:mark-paid", async (configId: string, id: number, paid: boolean) => {
         const db = await dbManager.getDB(configId);
         const repo = db.getRepository(Invoice);
-        const paidDate = paid ? new Date().toISOString().split("T")[0] : undefined;
+        const paidDate = paid ? today() : undefined;
         await repo.update(id, { paid, paidDate: paidDate ?? (null as any) });
         await logAction(db, "", paid ? "paid" : "unpaid", "invoice", id, {});
     });

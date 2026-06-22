@@ -10,8 +10,8 @@ export const useInvoices = () => {
     const loadInvoices = useCallback(async () => {
         if (!activeCompany) return;
         const [issued, received] = await Promise.all([
-            window.api.invoice.byCompany(activeConfigId!, activeCompany.ico),
-            window.api.invoice.byCustomer(activeConfigId!, activeCompany.ico),
+            window.api.invoice.byCompany(activeConfigId!, activeCompany.id!),
+            window.api.invoice.byCustomer(activeConfigId!, activeCompany.id!),
         ]);
         setInvoices([
             ...issued.map((i: any) => toInvoiceOption(i, "issued")),

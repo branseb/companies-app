@@ -5,8 +5,9 @@ contextBridge.exposeInMainWorld("api", {
   invoice: {
     create: (configId: string, data: Invoice) => ipcRenderer.invoke("invoice:create", configId, data),
     update: (configId: string, id: number, data: Invoice) => ipcRenderer.invoke("invoice:update", configId, id, data),
-    byCompany: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:by-company", configId, supplierIco),
-    byCustomer: (configId: string, customerIco: string) => ipcRenderer.invoke("invoice:by-customer", configId, customerIco),
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke("invoice:by-company", configId, companyId),
+    bySupplierIco: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:by-supplier-ico", configId, supplierIco),
+    byCustomer: (configId: string, companyId: number) => ipcRenderer.invoke("invoice:by-customer", configId, companyId),
     knownParties: (configId: string) => ipcRenderer.invoke("invoice:known-parties", configId),
     get: (configId: string, id: string) => ipcRenderer.invoke("invoice:get", configId, id),
     nextId: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:next-id", configId, supplierIco),
@@ -80,6 +81,34 @@ contextBridge.exposeInMainWorld("api", {
     byCompany: (configId: string, companyId: number) => ipcRenderer.invoke('receipt:byCompany', configId, companyId),
     delete:    (configId: string, id: number) => ipcRenderer.invoke('receipt:delete', configId, id),
     loadPhoto: (configId: string, photoPath: string) => ipcRenderer.invoke('receipt:loadPhoto', configId, photoPath),
+  },
+
+  employee: {
+    byCompany: (configId: string, companyId: number) => ipcRenderer.invoke('employee:byCompany', configId, companyId),
+    create:    (configId: string, companyId: number, data: any) => ipcRenderer.invoke('employee:create', configId, companyId, data),
+    update:    (configId: string, id: number, data: any) => ipcRenderer.invoke('employee:update', configId, id, data),
+    delete:    (configId: string, id: number) => ipcRenderer.invoke('employee:delete', configId, id),
+  },
+
+  travelRates: {
+    get:  () => ipcRenderer.invoke('travelRates:get'),
+    save: (rates: unknown) => ipcRenderer.invoke('travelRates:save', rates),
+  },
+
+  travelOrder: {
+    byCompany:   (configId: string, companyId: number) => ipcRenderer.invoke('travelOrder:byCompany', configId, companyId),
+    create:      (configId: string, companyId: number, data: any) => ipcRenderer.invoke('travelOrder:create', configId, companyId, data),
+    update:      (configId: string, id: any, data: any) => ipcRenderer.invoke('travelOrder:update', configId, id, data),
+    delete:      (configId: string, id: any) => ipcRenderer.invoke('travelOrder:delete', configId, id),
+    generatePdf: (configId: string, id: any, includeAccounting?: boolean) => ipcRenderer.invoke('travelOrder:generatePdf', configId, id, includeAccounting),
+  },
+
+  portal: {
+    isEnabled:    (configId: string) => ipcRenderer.invoke('portal:isEnabled', configId),
+    setEnabled:   (configId: string, enabled: boolean) => ipcRenderer.invoke('portal:setEnabled', configId, enabled),
+    migrate:      (configId: string, companyId: number) => ipcRenderer.invoke('portal:migrate', configId, companyId),
+    syncCompany:  (configId: string) => ipcRenderer.invoke('portal:syncCompany', configId),
+    syncRates:    (configId: string, rates: unknown) => ipcRenderer.invoke('portal:syncRates', configId, rates),
   },
 
   invite: {

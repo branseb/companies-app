@@ -11,6 +11,7 @@ import { useCompany } from '../context/company'
 import { mapToEN16931 } from '../utils/mapToEN16931'
 import { InvoiceFormContent } from './InvoiceFormContent'
 import type { SimpleInvoice } from '../models/SimpleInvoice'
+import { today, addDays } from '@e-companies/shared'
 
 const scrollbar = {
   '&::-webkit-scrollbar':       { width: 10, height: 10 },
@@ -40,8 +41,7 @@ type Props = {
   onGoToDuplicate?: () => void
 }
 
-const today = () => new Date().toISOString().split('T')[0]
-const due14 = () => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().split('T')[0] }
+const due14 = () => addDays(today(), 14)
 
 export function ImportInvoiceDialog({ open, base64, fileName, docType, onClose, onImported, onGoToDuplicate }: Props) {
   const { activeCompany, activeConfigId } = useCompany()
@@ -157,11 +157,11 @@ export function ImportInvoiceDialog({ open, base64, fileName, docType, onClose, 
 
         if (activeConfigId) {
           if (!isIssued && p.supplierIco) {
-            const existing = await window.api.invoice.byCompany(activeConfigId, p.supplierIco)
+            const existing = await window.api.invoice.bySupplierIco(activeConfigId, p.supplierIco)
             const dup = existing.find((inv: any) => inv.issueDate === (p.issueDate || today()))
             if (dup) setDupWarn(`Faktúra od tohto dodávateľa s dátumom ${p.issueDate} už existuje v databáze (č. ${dup.invoiceNumber})`)
-          } else if (isIssued && p.invoiceNumber && activeCompany?.ico) {
-            const existing = await window.api.invoice.byCompany(activeConfigId, activeCompany.ico)
+          } else if (isIssued && p.invoiceNumber && activeCompany?.id) {
+            const existing = await window.api.invoice.byCompany(activeConfigId, activeCompany.id)
             const dup = existing.find((inv: any) => inv.invoiceNumber === p.invoiceNumber)
             if (dup) setDupWarn(`Vydaná faktúra č. ${p.invoiceNumber} už existuje v databáze`)
           }

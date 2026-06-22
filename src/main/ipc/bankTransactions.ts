@@ -5,6 +5,7 @@ import { CashEntry } from "../database/entities/cashEntry";
 import { handle } from "./ipcHandle";
 import { logAction } from "./auditLog";
 import { dbManager } from "../database/database-manager";
+import { today } from "@e-companies/shared";
 
 export const registerBankTransactionIpc = () => {
 
@@ -75,7 +76,7 @@ export const registerBankTransactionIpc = () => {
         const prev = await db.getRepository(BankTransaction).findOneBy({ id });
         await db.getRepository(BankTransaction).update(id, { linkedInvoiceId: invoiceId ?? (null as any) });
         if (invoiceId) {
-            await db.getRepository(Invoice).update(invoiceId, { paid: true, paidDate: prev?.date ?? new Date().toISOString().split("T")[0] });
+            await db.getRepository(Invoice).update(invoiceId, { paid: true, paidDate: prev?.date ?? today() });
         } else if (prev?.linkedInvoiceId) {
             await db.getRepository(Invoice).update(prev.linkedInvoiceId, { paid: false, paidDate: null as any });
         }
