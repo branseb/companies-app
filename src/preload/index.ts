@@ -95,6 +95,11 @@ contextBridge.exposeInMainWorld("api", {
     save: (rates: unknown) => ipcRenderer.invoke('travelRates:save', rates),
   },
 
+  travelPreferences: {
+    get:  () => ipcRenderer.invoke('travelPreferences:get'),
+    save: (prefs: unknown) => ipcRenderer.invoke('travelPreferences:save', prefs),
+  },
+
   travelOrder: {
     byCompany:   (configId: string, companyId: number) => ipcRenderer.invoke('travelOrder:byCompany', configId, companyId),
     create:      (configId: string, companyId: number, data: any) => ipcRenderer.invoke('travelOrder:create', configId, companyId, data),

@@ -6,7 +6,9 @@ import {
     type TravelOrderInput,
     type StravneRates,
     type EmployeeRecord,
+    type TravelPreferences,
     DEFAULT_STRAVNE_RATES,
+    DEFAULT_TRAVEL_PREFERENCES,
 } from '@e-companies/shared'
 
 export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string }) => {
@@ -15,6 +17,7 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
     const [loading, setLoading] = useState(true)
     const [rates, setRates] = useState<StravneRates>(DEFAULT_STRAVNE_RATES)
     const [employees, setEmployees] = useState<EmployeeRecord[]>([])
+    const [preferences, setPreferences] = useState<TravelPreferences>(DEFAULT_TRAVEL_PREFERENCES)
 
     const load = async () => {
         if (!activeConfigId || !activeCompany?.id) return
@@ -32,6 +35,9 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
     useEffect(() => {
         ;(window.api as any).travelRates.get().then((r: StravneRates | null) => {
             if (r) setRates(r)
+        })
+        ;(window.api as any).travelPreferences.get().then((p: TravelPreferences | null) => {
+            if (p) setPreferences(p)
         })
     }, [])
 
@@ -64,6 +70,11 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
     const handleGeneratePdf = async (order: TravelOrder) => {
         if (!activeConfigId) return
         await (window.api as any).travelOrder.generatePdf(activeConfigId, order.id, order.includeAccounting ?? true)
+    }
+
+    const handlePreferencesChange = async (p: TravelPreferences) => {
+        setPreferences(p)
+        await (window.api as any).travelPreferences.save(p)
     }
 
     const handleRatesChange = async (r: StravneRates) => {
@@ -106,6 +117,8 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
             onEmployeeCreate={handleEmployeeCreate}
             onEmployeeUpdate={handleEmployeeUpdate}
             onEmployeeDelete={handleEmployeeDelete}
+            preferences={preferences}
+            onPreferencesChange={handlePreferencesChange}
         />
     )
 }

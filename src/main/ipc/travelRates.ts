@@ -15,4 +15,16 @@ export const registerTravelRatesIpc = () => {
         fs.writeFileSync(filePath, JSON.stringify(rates, null, 2), 'utf-8')
         return true
     })
+
+    handle('travelPreferences:get', async () => {
+        const filePath = path.join(app.getPath('userData'), 'travelPreferences.json')
+        if (!fs.existsSync(filePath)) return null
+        return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+    })
+
+    handle('travelPreferences:save', async (prefs: unknown) => {
+        const filePath = path.join(app.getPath('userData'), 'travelPreferences.json')
+        fs.writeFileSync(filePath, JSON.stringify(prefs, null, 2), 'utf-8')
+        return true
+    })
 }
