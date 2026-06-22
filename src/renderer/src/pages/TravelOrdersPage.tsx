@@ -65,6 +65,7 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
                 rateMeal5_12:   er?.meal5_12    ?? null,
                 rateMeal12_18:  er?.meal12_18   ?? null,
                 rateMeal18plus: er?.meal18plus  ?? null,
+                foreign:        er?.foreign     ?? null,
             }
         })
         setEmployees(merged)
@@ -117,12 +118,15 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
 
     const saveEmpRates = async (configId: string, empId: number | string, data: EmployeeFormData) => {
         const rates = {
-            kmRate:    data.rateKm         ?? null,
-            meal5_12:  data.rateMeal5_12   ?? null,
-            meal12_18: data.rateMeal12_18  ?? null,
+            kmRate:     data.rateKm         ?? null,
+            meal5_12:   data.rateMeal5_12   ?? null,
+            meal12_18:  data.rateMeal12_18  ?? null,
             meal18plus: data.rateMeal18plus ?? null,
+            foreign:    data.foreign        ?? null,
         }
-        const hasAny = Object.values(rates).some(v => v != null)
+        const hasAny = rates.kmRate != null || rates.meal5_12 != null ||
+            rates.meal12_18 != null || rates.meal18plus != null ||
+            (rates.foreign && Object.values(rates.foreign).some(v => v != null))
         if (hasAny) {
             await (window.api as any).employeeRates.save(configId, empId, rates)
         } else {
