@@ -118,11 +118,13 @@ contextBridge.exposeInMainWorld("api", {
     delete:      (configId: string, id: any) => ipcRenderer.invoke('travelOrder:delete', configId, id),
     generatePdf: (configId: string, id: any, includeAccounting?: boolean) => ipcRenderer.invoke('travelOrder:generatePdf', configId, id, includeAccounting),
     attachment: {
-      list:   (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachments:get', configId, orderId),
-      add:    (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachment:add', configId, orderId),
-      open:   (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:open', configId, orderId, id),
-      delete:  (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:delete', configId, orderId, id),
-      migrate: (configId: string, tempId: string, realOrderId: any) => ipcRenderer.invoke('travelOrder:attachment:migrate', configId, tempId, realOrderId),
+      list:        (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachments:get', configId, orderId),
+      add:         (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachment:add', configId, orderId),
+      open:        (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:open', configId, orderId, id),
+      delete:      (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:delete', configId, orderId, id),
+      migrate:     (configId: string, tempId: string, realOrderId: any) => ipcRenderer.invoke('travelOrder:attachment:migrate', configId, tempId, realOrderId),
+      addFromPath: (configId: string, orderId: any, filePath: string) => ipcRenderer.invoke('travelOrder:attachment:addFromPath', configId, orderId, filePath),
+      read:        (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:read', configId, orderId, id),
     },
   },
 

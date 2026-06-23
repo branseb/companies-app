@@ -105,6 +105,9 @@ export class TravelOrder {
     @Column({ type: 'bit', nullable: true })
     isElectric?: boolean | null
 
+    @Column({ type: 'nvarchar', length: 20, nullable: true })
+    fuelType?: string | null
+
     @Column({ type: 'bit', nullable: true })
     useExchangeRates?: boolean | null
 

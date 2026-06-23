@@ -291,6 +291,37 @@ export const registerTravelOrdersIpc = () => {
         fs.renameSync(src, dst)
     })
 
+    handle('travelOrder:attachment:addFromPath', async (configId: string, orderId: number | string, srcPath: string) => {
+        const originalName = path.basename(srcPath)
+        const id = randomUUID()
+        const dir = attachmentsDir(configId, orderId)
+        fs.mkdirSync(dir, { recursive: true })
+        const storedName = `${id}_${originalName}`
+        fs.copyFileSync(srcPath, path.join(dir, storedName))
+        const stat = fs.statSync(path.join(dir, storedName))
+        const attachment = { id, filename: originalName, storedName, addedAt: new Date().toISOString(), size: stat.size }
+        const list = readAttachmentIndex(configId, orderId)
+        list.push(attachment)
+        writeAttachmentIndex(configId, orderId, list)
+        return attachment
+    })
+
+    handle('travelOrder:attachment:read', async (configId: string, orderId: number | string, attachmentId: string) => {
+        const att = readAttachmentIndex(configId, orderId).find(a => a.id === attachmentId)
+        if (!att) throw new Error('Príloha nenájdená')
+        const filePath = path.join(attachmentsDir(configId, orderId), att.storedName)
+        const buffer = fs.readFileSync(filePath)
+        const ext = path.extname(att.filename).toLowerCase()
+        const mimeTypes: Record<string, string> = {
+            '.pdf': 'application/pdf',
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+            '.png': 'image/png', '.gif': 'image/gif',
+            '.webp': 'image/webp', '.bmp': 'image/bmp',
+            '.heic': 'image/heic',
+        }
+        return { buffer, mimeType: mimeTypes[ext] ?? 'application/octet-stream' }
+    })
+
     // ── Portal nastavenia ──────────────────────────────────────────────────────
 
     handle('portal:isEnabled', async (configId: string) => isPortalEnabled(configId))

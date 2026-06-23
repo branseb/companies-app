@@ -133,6 +133,16 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
         await (window.api as any).travelOrder.attachment.migrate(activeConfigId, tempId, realOrderId)
     }
 
+    const handleAddAttachmentFromPath = async (orderId: TravelOrder['id'], filePath: string): Promise<TravelOrderAttachment | null> => {
+        if (!activeConfigId) return null
+        return (window.api as any).travelOrder.attachment.addFromPath(activeConfigId, orderId, filePath)
+    }
+
+    const handleReadAttachment = async (orderId: TravelOrder['id'], attachmentId: string) => {
+        if (!activeConfigId) return null
+        return (window.api as any).travelOrder.attachment.read(activeConfigId, orderId, attachmentId)
+    }
+
     const handlePreferencesChange = async (p: TravelPreferences) => {
         setPreferences(p)
         await (window.api as any).travelPreferences.save(p)
@@ -207,9 +217,11 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
             onPreferencesChange={handlePreferencesChange}
             onGetAttachments={handleGetAttachments}
             onAddAttachment={handleAddAttachment}
+            onAddAttachmentFromPath={handleAddAttachmentFromPath}
             onOpenAttachment={handleOpenAttachment}
             onDeleteAttachment={handleDeleteAttachment}
             onMigrateAttachments={handleMigrateAttachments}
+            onReadAttachment={handleReadAttachment}
         />
     )
 }
