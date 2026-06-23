@@ -3,6 +3,7 @@ import { useCompany } from '../context/company'
 import {
     TravelOrdersWidget,
     type TravelOrder,
+    type TravelOrderAttachment,
     type TravelOrderInput,
     type StravneRates,
     type EmployeeRecord,
@@ -83,10 +84,11 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
 
     useEffect(() => { loadEmployees() }, [activeConfigId])
 
-    const handleAdd = async (data: TravelOrderInput) => {
-        if (!activeConfigId || !activeCompany?.id) return
-        await (window.api as any).travelOrder.create(activeConfigId, activeCompany.id, data)
+    const handleAdd = async (data: TravelOrderInput): Promise<TravelOrder['id'] | undefined> => {
+        if (!activeConfigId || !activeCompany?.id) return undefined
+        const created = await (window.api as any).travelOrder.create(activeConfigId, activeCompany.id, data)
         await load()
+        return created?.id ?? created?.firebaseId
     }
 
     const handleUpdate = async (id: TravelOrder['id'], data: Partial<TravelOrderInput>) => {
@@ -104,6 +106,31 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
     const handleGeneratePdf = async (order: TravelOrder) => {
         if (!activeConfigId) return
         await (window.api as any).travelOrder.generatePdf(activeConfigId, order.id, order.includeAccounting ?? true)
+    }
+
+    const handleGetAttachments = async (orderId: TravelOrder['id']): Promise<TravelOrderAttachment[]> => {
+        if (!activeConfigId) return []
+        return (window.api as any).travelOrder.attachment.list(activeConfigId, orderId) ?? []
+    }
+
+    const handleAddAttachment = async (orderId: TravelOrder['id']): Promise<TravelOrderAttachment | null> => {
+        if (!activeConfigId) return null
+        return (window.api as any).travelOrder.attachment.add(activeConfigId, orderId)
+    }
+
+    const handleOpenAttachment = (orderId: TravelOrder['id'], attachmentId: string) => {
+        if (!activeConfigId) return
+        ;(window.api as any).travelOrder.attachment.open(activeConfigId, orderId, attachmentId)
+    }
+
+    const handleDeleteAttachment = async (orderId: TravelOrder['id'], attachmentId: string) => {
+        if (!activeConfigId) return
+        await (window.api as any).travelOrder.attachment.delete(activeConfigId, orderId, attachmentId)
+    }
+
+    const handleMigrateAttachments = async (tempId: string, realOrderId: TravelOrder['id']) => {
+        if (!activeConfigId) return
+        await (window.api as any).travelOrder.attachment.migrate(activeConfigId, tempId, realOrderId)
     }
 
     const handlePreferencesChange = async (p: TravelPreferences) => {
@@ -178,6 +205,11 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
             onEmployeeDelete={handleEmployeeDelete}
             preferences={preferences}
             onPreferencesChange={handlePreferencesChange}
+            onGetAttachments={handleGetAttachments}
+            onAddAttachment={handleAddAttachment}
+            onOpenAttachment={handleOpenAttachment}
+            onDeleteAttachment={handleDeleteAttachment}
+            onMigrateAttachments={handleMigrateAttachments}
         />
     )
 }

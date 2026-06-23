@@ -25,10 +25,6 @@ export const readEmployeeRates = (configId: string, employeeId: number | string)
 }
 
 export const registerEmployeeRatesIpc = () => {
-    handle('employeeRates:get', async (configId: string, employeeId: number | string) =>
-        readEmployeeRates(configId, employeeId)
-    )
-
     handle('employeeRates:getAll', async (configId: string) => {
         const store = readStore()
         return store[configId] ?? {}

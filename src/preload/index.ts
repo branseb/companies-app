@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld("api", {
     bySupplierIco: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:by-supplier-ico", configId, supplierIco),
     byCustomer: (configId: string, companyId: number) => ipcRenderer.invoke("invoice:by-customer", configId, companyId),
     knownParties: (configId: string) => ipcRenderer.invoke("invoice:known-parties", configId),
-    get: (configId: string, id: string) => ipcRenderer.invoke("invoice:get", configId, id),
+    get: (configId: string, id: number) => ipcRenderer.invoke("invoice:get", configId, id),
     nextId: (configId: string, supplierIco: string) => ipcRenderer.invoke("invoice:next-id", configId, supplierIco),
     nextDfId: (configId: string) => ipcRenderer.invoke("invoice:next-df-id", configId),
     markPaid: (configId: string, id: number, paid: boolean) => ipcRenderer.invoke("invoice:mark-paid", configId, id, paid),
@@ -117,6 +117,13 @@ contextBridge.exposeInMainWorld("api", {
     update:      (configId: string, id: any, data: any) => ipcRenderer.invoke('travelOrder:update', configId, id, data),
     delete:      (configId: string, id: any) => ipcRenderer.invoke('travelOrder:delete', configId, id),
     generatePdf: (configId: string, id: any, includeAccounting?: boolean) => ipcRenderer.invoke('travelOrder:generatePdf', configId, id, includeAccounting),
+    attachment: {
+      list:   (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachments:get', configId, orderId),
+      add:    (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachment:add', configId, orderId),
+      open:   (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:open', configId, orderId, id),
+      delete:  (configId: string, orderId: any, id: string) => ipcRenderer.invoke('travelOrder:attachment:delete', configId, orderId, id),
+      migrate: (configId: string, tempId: string, realOrderId: any) => ipcRenderer.invoke('travelOrder:attachment:migrate', configId, tempId, realOrderId),
+    },
   },
 
   portal: {
@@ -151,7 +158,7 @@ contextBridge.exposeInMainWorld("electron", {
     devtools: () => ipcRenderer.send("window:devtools"),
   },
   pdf: {
-    download: (configId: string, invoiceId: string) => ipcRenderer.invoke("pdf:download", configId, invoiceId),
+    download: (configId: string, invoiceId: number) => ipcRenderer.invoke("pdf:download", configId, invoiceId),
     open: (filePath: string) => ipcRenderer.send("pdf:open", filePath),
   },
   document: {

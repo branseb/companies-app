@@ -4,7 +4,6 @@ import path from "path";
 import { Company } from "../database/entities/company";
 import { CompanyConfig, dbManager, testConnection } from "../database/database-manager";
 import { handle } from "./ipcHandle";
-import { ipcMain } from "electron";
 
 const configPath = () => path.join(app.getPath("userData"), "companies.json");
 
@@ -54,7 +53,7 @@ export const registerCompanyConfigIpc = () => {
         return company;
     });
 
-    ipcMain.handle("db:test", async (_e, connectionString: string) => {
+    handle("db:test", async (connectionString: string) => {
         try {
             await testConnection(connectionString);
             return { success: true };

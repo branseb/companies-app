@@ -1,6 +1,7 @@
-import { app, shell } from 'electron'
+import { app, shell, dialog, BrowserWindow } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import { randomUUID } from 'crypto'
 import { TravelOrder } from '../database/entities/travelOrder'
 import { Company } from '../database/entities/company'
 import { dbManager } from '../database/database-manager'
@@ -64,6 +65,37 @@ const sanitize = (obj: unknown): unknown => {
     )
 }
 
+// ── Prílohy ──────────────────────────────────────────────────────────────────
+
+type TravelOrderAttachment = {
+    id: string
+    filename: string
+    storedName: string
+    addedAt: string
+    size: number
+}
+
+const attachmentsDir = (configId: string, orderId: number | string) =>
+    path.join(app.getPath('userData'), 'travelAttachments', configId, String(orderId))
+
+const readAttachmentIndex = (configId: string, orderId: number | string): TravelOrderAttachment[] => {
+    try {
+        const idx = path.join(attachmentsDir(configId, orderId), 'index.json')
+        if (fs.existsSync(idx)) return JSON.parse(fs.readFileSync(idx, 'utf-8'))
+    } catch { /* ignore */ }
+    return []
+}
+
+const writeAttachmentIndex = (configId: string, orderId: number | string, list: TravelOrderAttachment[]) => {
+    const dir = attachmentsDir(configId, orderId)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify(list, null, 2))
+}
+
+const deleteAttachmentsDir = (configId: string, orderId: number | string) => {
+    try { fs.rmSync(attachmentsDir(configId, orderId), { recursive: true, force: true }) } catch { /* ignore */ }
+}
+
 // ── IPC registrácia ──────────────────────────────────────────────────────────
 
 export const registerTravelOrdersIpc = () => {
@@ -111,12 +143,15 @@ export const registerTravelOrdersIpc = () => {
     handle('travelOrder:delete', async (configId: string, id: number | string) => {
         if (isPortalEnabled(configId)) {
             await ordersCol(configId).doc(String(id)).delete()
-            return { success: true }
+        } else {
+            const db = await dbManager.getDB(configId)
+            const result = await db.getRepository(TravelOrder).delete(id as number)
+            await logAction(db, '', 'delete', 'travelOrder', id as number, {})
+            deleteAttachmentsDir(configId, id)
+            return result
         }
-        const db = await dbManager.getDB(configId)
-        const result = await db.getRepository(TravelOrder).delete(id as number)
-        await logAction(db, '', 'delete', 'travelOrder', id as number, {})
-        return result
+        deleteAttachmentsDir(configId, id)
+        return { success: true }
     })
 
     handle('travelOrder:generatePdf', async (configId: string, id: number | string, includeAccounting: boolean = true) => {
@@ -200,6 +235,60 @@ export const registerTravelOrdersIpc = () => {
         fs.writeFileSync(filePath, Buffer.from(base64, 'base64'))
         shell.openPath(filePath)
         return filePath
+    })
+
+    // ── Prílohy CP ────────────────────────────────────────────────────────────
+
+    handle('travelOrder:attachments:get', async (configId: string, orderId: number | string) => {
+        return readAttachmentIndex(configId, orderId)
+    })
+
+    handle('travelOrder:attachment:add', async (configId: string, orderId: number | string) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        const result = await dialog.showOpenDialog(win, {
+            title: 'Vybrať prílohu',
+            properties: ['openFile'],
+            filters: [
+                { name: 'Dokumenty a obrázky', extensions: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'xml', 'csv', 'xlsx', 'xls'] },
+                { name: 'Všetky súbory', extensions: ['*'] },
+            ],
+        })
+        if (result.canceled || !result.filePaths[0]) return null
+        const srcPath = result.filePaths[0]
+        const originalName = path.basename(srcPath)
+        const id = randomUUID()
+        const dir = attachmentsDir(configId, orderId)
+        fs.mkdirSync(dir, { recursive: true })
+        const storedName = `${id}_${originalName}`
+        fs.copyFileSync(srcPath, path.join(dir, storedName))
+        const stat = fs.statSync(path.join(dir, storedName))
+        const attachment: TravelOrderAttachment = { id, filename: originalName, storedName, addedAt: new Date().toISOString(), size: stat.size }
+        const list = readAttachmentIndex(configId, orderId)
+        list.push(attachment)
+        writeAttachmentIndex(configId, orderId, list)
+        return attachment
+    })
+
+    handle('travelOrder:attachment:open', async (configId: string, orderId: number | string, attachmentId: string) => {
+        const att = readAttachmentIndex(configId, orderId).find(a => a.id === attachmentId)
+        if (!att) throw new Error('Príloha nenájdená')
+        await shell.openPath(path.join(attachmentsDir(configId, orderId), att.storedName))
+    })
+
+    handle('travelOrder:attachment:delete', async (configId: string, orderId: number | string, attachmentId: string) => {
+        const list = readAttachmentIndex(configId, orderId)
+        const att = list.find(a => a.id === attachmentId)
+        if (!att) return
+        try { fs.unlinkSync(path.join(attachmentsDir(configId, orderId), att.storedName)) } catch { /* already gone */ }
+        writeAttachmentIndex(configId, orderId, list.filter(a => a.id !== attachmentId))
+    })
+
+    handle('travelOrder:attachment:migrate', async (configId: string, tempId: string, realOrderId: number | string) => {
+        const src = attachmentsDir(configId, tempId)
+        if (!fs.existsSync(src)) return
+        const dst = attachmentsDir(configId, realOrderId)
+        fs.mkdirSync(path.dirname(dst), { recursive: true })
+        fs.renameSync(src, dst)
     })
 
     // ── Portal nastavenia ──────────────────────────────────────────────────────
