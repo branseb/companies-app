@@ -95,6 +95,14 @@ contextBridge.exposeInMainWorld("api", {
     save: (rates: unknown) => ipcRenderer.invoke('travelRates:save', rates),
   },
 
+  exchangeRates: {
+    fetch: (isoDate: string) => ipcRenderer.invoke('exchangeRates:fetch', isoDate),
+  },
+
+  fuelPrices: {
+    fetch: (fuelType: string, isoDate: string) => ipcRenderer.invoke('fuelPrices:fetch', fuelType, isoDate),
+  },
+
   companyRates: {
     get:  (configId: string) => ipcRenderer.invoke('companyRates:get', configId),
     save: (configId: string, rates: unknown) => ipcRenderer.invoke('companyRates:save', configId, rates),
@@ -115,8 +123,8 @@ contextBridge.exposeInMainWorld("api", {
     byCompany:   (configId: string, companyId: number) => ipcRenderer.invoke('travelOrder:byCompany', configId, companyId),
     create:      (configId: string, companyId: number, data: any) => ipcRenderer.invoke('travelOrder:create', configId, companyId, data),
     update:      (configId: string, id: any, data: any) => ipcRenderer.invoke('travelOrder:update', configId, id, data),
-    delete:      (configId: string, id: any) => ipcRenderer.invoke('travelOrder:delete', configId, id),
-    generatePdf: (configId: string, id: any, includeAccounting?: boolean) => ipcRenderer.invoke('travelOrder:generatePdf', configId, id, includeAccounting),
+    delete:      (configId: string, id: any, firebaseId?: string) => ipcRenderer.invoke('travelOrder:delete', configId, id, firebaseId),
+    generatePdf: (configId: string, id: any, includeAccounting?: boolean, firebaseId?: string) => ipcRenderer.invoke('travelOrder:generatePdf', configId, id, includeAccounting, firebaseId),
     attachment: {
       list:        (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachments:get', configId, orderId),
       add:         (configId: string, orderId: any) => ipcRenderer.invoke('travelOrder:attachment:add', configId, orderId),

@@ -153,6 +153,10 @@ const drawPage1 = (doc: jsPDF, d: TravelOrderPdfInput) => {
     let page1StartY = 8
     let y = 12
 
+    // Efektívna EUR záloha: preferuj advances pole, fallback na advanceAmount
+    const effectiveEurAdv = d.advanceAmount
+        ?? (d.advances?.filter(a => (a.currency || 'EUR') === 'EUR').reduce((s, a) => s + a.amount, 0) || null)
+
     // ── Titul ──────────────────────────────────────────────────────────────
     y += 4
     bold(doc, 11)
@@ -301,7 +305,7 @@ const drawPage1 = (doc: jsPDF, d: TravelOrderPdfInput) => {
         // ── Riadok 6: Preddavok ──────────────────────────────────────────────
         y += 1
         label(doc, 'Povolený preddavok EUR', L + 2, y + 2.5)
-        if (d.advanceAmount) boldVal(doc, fmtN(d.advanceAmount), L + 2, y + 6)
+        if (effectiveEurAdv) boldVal(doc, fmtN(effectiveEurAdv), L + 2, y + 6)
         vLine(doc, 100, y - 1, y + 9)
         label(doc, 'vyplatený dňa', 102, y + 2.5); hLine(doc, y + 7, 115, 155)
         vLine(doc, 155, y - 1, y + 9)
@@ -366,7 +370,7 @@ const drawPage1 = (doc: jsPDF, d: TravelOrderPdfInput) => {
         // Sumárne riadky
         const sumRows = [
             { lbl: 'Účtovaná náhrada bola preskúmaná a upravená na', val: '', unit: 'EUR' },
-            { lbl: 'Vyplatený preddavok',  val: fmtN(d.advanceAmount), unit: 'EUR' },
+            { lbl: 'Vyplatený preddavok',  val: fmtN(effectiveEurAdv), unit: 'EUR' },
             { lbl: 'Doplatok- Preplatok',  val: '', unit: 'EUR' },
         ]
         if (d.showSlovom !== false) {
@@ -383,7 +387,7 @@ const drawPage1 = (doc: jsPDF, d: TravelOrderPdfInput) => {
         })
 
         // Spodné podpisy
-        const sigSecH = 42
+        const sigSecH = 25
         const sigY = y + 2
         const sigCols = [L, 60, 118, 162, R]
         const sigLabels = ['Dátum a podpis zamestnanca,\nktorý upravil vyúčtovanie', 'Dátum a podpis príjemcu\n(preukaz totožnosti)', 'Dátum a podpis\npokladníka', 'Schválil (dátum a podpis)']
@@ -672,7 +676,7 @@ const drawPage2 = (doc: jsPDF, d: TravelOrderPdfInput, f: Financials, startY?: n
         }
     }
 
-    const rowH = 5
+    const rowH = 4.8
     const tOff = rowH * 0.7
 
     for (const { od, pr } of dataPairs) {
@@ -713,10 +717,10 @@ const drawPage2 = (doc: jsPDF, d: TravelOrderPdfInput, f: Financials, startY?: n
         hLine(doc, y)
     }
 
-    // Pred sumárnou sekciou overíme, či zostatok stránky stačí (~105mm)
+    // Pred sumárnou sekciou overíme, či zostatok stránky stačí (~88mm)
     // Nepoužívame addContinuationPage — hlavičku tabuľky tu nepotrebujeme
-    if (y + 105 > PAGE_BOTTOM) {
-        rect(doc, L, currentPageStartY, W, PAGE_BOTTOM - currentPageStartY)
+    if (y + 88 > PAGE_BOTTOM) {
+        rect(doc, L, currentPageStartY, W, y - currentPageStartY)
         doc.addPage()
         setupFonts(doc)
         currentPageStartY = 8

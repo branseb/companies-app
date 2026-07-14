@@ -4,7 +4,7 @@ import path from 'path'
 import { handle } from './ipcHandle'
 import { adminDb, isPortalEnabled } from '../firebase/admin'
 
-type EmployeeData = { name: string; address?: string | null; defaultLocation?: string | null; defaultFuelConsumption?: number | null; defaultIsElectric?: boolean | null; defaultEcv?: string | null; isMobileWorker?: boolean | null }
+type EmployeeData = { name: string; address?: string | null; defaultLocation?: string | null; defaultFuelConsumption?: number | null; defaultFuelType?: string | null; defaultIsElectric?: boolean | null; defaultEcv?: string | null; isMobileWorker?: boolean | null }
 type EmployeeRecord = { id: number | string } & EmployeeData
 type Store = Record<string, EmployeeRecord[]>
 
@@ -32,6 +32,7 @@ const toFirestore = (data: EmployeeData) => ({
     address:                data.address                ?? null,
     defaultLocation:        data.defaultLocation        ?? null,
     defaultFuelConsumption: data.defaultFuelConsumption ?? null,
+    defaultFuelType:        data.defaultFuelType        ?? null,
     defaultIsElectric:      data.defaultIsElectric      ?? null,
     defaultEcv:             data.defaultEcv             ?? null,
     isMobileWorker:         data.isMobileWorker         ?? null,

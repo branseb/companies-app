@@ -60,6 +60,9 @@ export class TravelOrder {
     @Column({ type: 'float', nullable: true })
     fuelPricePerLiter?: number
 
+    @Column({ type: 'nvarchar', length: 10, nullable: true })
+    fuelPriceWeek?: string
+
     @Column({ type: 'float', nullable: true })
     advanceAmount?: number
 

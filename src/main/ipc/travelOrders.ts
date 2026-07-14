@@ -140,9 +140,9 @@ export const registerTravelOrdersIpc = () => {
         return db.getRepository(TravelOrder).update(id as number, { ...rest, ...buildRatesSnapshot(configId, data) })
     })
 
-    handle('travelOrder:delete', async (configId: string, id: number | string) => {
+    handle('travelOrder:delete', async (configId: string, id: number | string, firebaseId?: string) => {
         if (isPortalEnabled(configId)) {
-            await ordersCol(configId).doc(String(id)).delete()
+            await ordersCol(configId).doc(firebaseId ?? String(id)).delete()
         } else {
             const db = await dbManager.getDB(configId)
             const result = await db.getRepository(TravelOrder).delete(id as number)
@@ -154,11 +154,11 @@ export const registerTravelOrdersIpc = () => {
         return { success: true }
     })
 
-    handle('travelOrder:generatePdf', async (configId: string, id: number | string, includeAccounting: boolean = true) => {
+    handle('travelOrder:generatePdf', async (configId: string, id: number | string, includeAccounting: boolean = true, firebaseId?: string) => {
         let order: Partial<TravelOrder> & { company?: Company }
 
         if (isPortalEnabled(configId)) {
-            const snap = await ordersCol(configId).doc(String(id)).get()
+            const snap = await ordersCol(configId).doc(firebaseId ?? String(id)).get()
             if (!snap.exists) throw new Error('Cestovný príkaz nenájdený')
             order = firestoreToOrder(snap.id, snap.data()!) as any
             // načítame company zo SQLite pre údaje firmy na PDF

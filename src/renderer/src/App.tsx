@@ -103,7 +103,7 @@ const WindowBar = () => {
 
 	return (
 		<Stack
-			sx={{ "-webkit-app-region": "drag", background: mode === "dark" ? "#1e1e1e" : "silver", flexShrink: 0 }}
+			sx={{ "-webkit-app-region": "drag", background: mode === "dark" ? "#1E293B" : "#E2E8F0", flexShrink: 0 }}
 			width="100%"
 			direction="row"
 			justifyContent="end"

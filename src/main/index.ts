@@ -16,6 +16,8 @@ import { registerDocumentsIpc } from './ipc/documents';
 import { registerReceiptsIpc } from './ipc/receipts';
 import { registerTravelOrdersIpc } from './ipc/travelOrders';
 import { registerTravelRatesIpc } from './ipc/travelRates';
+import { registerExchangeRatesIpc } from './ipc/exchangeRates';
+import { registerFuelPricesIpc } from './ipc/fuelPrices';
 import { registerEmployeesIpc } from './ipc/employees';
 import { registerCompanyRatesIpc } from './ipc/companyRates';
 import { registerEmployeeRatesIpc } from './ipc/employeeRates';
@@ -58,6 +60,8 @@ app.whenReady().then(async () => {
   registerReceiptsIpc();
   registerTravelOrdersIpc();
   registerTravelRatesIpc();
+  registerExchangeRatesIpc();
+  registerFuelPricesIpc();
   registerEmployeesIpc();
   registerCompanyRatesIpc();
   registerEmployeeRatesIpc();

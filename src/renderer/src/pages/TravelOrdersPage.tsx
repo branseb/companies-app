@@ -97,15 +97,15 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
         await load()
     }
 
-    const handleDelete = async (id: TravelOrder['id']) => {
+    const handleDelete = async (id: TravelOrder['id'], firebaseId?: string) => {
         if (!activeConfigId) return
-        await (window.api as any).travelOrder.delete(activeConfigId, id)
+        await (window.api as any).travelOrder.delete(activeConfigId, id, firebaseId)
         setOrders(o => o.filter(x => x.id !== id))
     }
 
     const handleGeneratePdf = async (order: TravelOrder) => {
         if (!activeConfigId) return
-        await (window.api as any).travelOrder.generatePdf(activeConfigId, order.id, order.includeAccounting ?? true)
+        await (window.api as any).travelOrder.generatePdf(activeConfigId, order.id, order.includeAccounting ?? true, (order as any).firebaseId)
     }
 
     const handleGetAttachments = async (orderId: TravelOrder['id']): Promise<TravelOrderAttachment[]> => {
@@ -222,6 +222,8 @@ export const TravelOrdersPage = ({ companyId: _companyId }: { companyId: string 
             onDeleteAttachment={handleDeleteAttachment}
             onMigrateAttachments={handleMigrateAttachments}
             onReadAttachment={handleReadAttachment}
+            onFetchExchangeRates={(isoDate) => (window.api as any).exchangeRates.fetch(isoDate)}
+            onFetchFuelPrice={(fuelType, isoDate) => (window.api as any).fuelPrices.fetch(fuelType, isoDate)}
         />
     )
 }
