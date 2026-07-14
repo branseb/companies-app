@@ -133,6 +133,15 @@ export class TravelOrder {
             from: (v: string | null) => { try { return v ? JSON.parse(v) : null } catch { return null } },
         },
     })
+    exchangeRateCategories?: Record<string, string[]> | null
+
+    @Column({
+        type: 'nvarchar', length: 'max', nullable: true,
+        transformer: {
+            to:   (v: unknown) => (v != null ? JSON.stringify(v) : null),
+            from: (v: string | null) => { try { return v ? JSON.parse(v) : null } catch { return null } },
+        },
+    })
     trips?: unknown[] | null
 
     @Column({

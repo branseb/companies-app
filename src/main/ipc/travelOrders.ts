@@ -220,6 +220,7 @@ export const registerTravelOrdersIpc = () => {
             useExchangeRates:    order.useExchangeRates,
             exchangeRateDate:    order.exchangeRateDate,
             exchangeRates:       order.exchangeRates,
+            exchangeRateCategories: order.exchangeRateCategories,
             trips:               order.trips as any,
             ratesHistory,
             includeAccounting,
